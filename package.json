@@ -9,7 +9,6 @@
     "deploy": "npm exec wrangler deploy",
     "eval": "vitest --config=vitest.eval.config.ts",
     "eval:ci": "vitest run --config=vitest.eval.config.ts --coverage --reporter=junit --outputFile=eval.junit.xml",
-    "eval:dev": "evalite watch",
     "format": "biome format --write",
     "lint": "biome lint",
     "lint:fix": "biome lint --fix",
