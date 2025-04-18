@@ -6,6 +6,7 @@ describe("list_organizations", () => {
     const tool = TOOL_HANDLERS.list_organizations;
     const result = await tool({
       accessToken: "access-token",
+      userId: "1",
       organizationSlug: null,
     });
     expect(result).toMatchInlineSnapshot(`
@@ -23,6 +24,7 @@ describe("list_teams", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {
@@ -44,6 +46,7 @@ describe("list_projects", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {
@@ -65,6 +68,7 @@ describe("list_issues", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {
@@ -108,6 +112,7 @@ describe("list_releases", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {
@@ -138,6 +143,7 @@ describe("list_releases", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {
@@ -171,6 +177,7 @@ describe("list_tags", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {
@@ -215,6 +222,7 @@ describe("search_errors", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {
@@ -254,6 +262,7 @@ describe("search_transactions", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {
@@ -301,6 +310,7 @@ describe("get_issue_summary", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {
@@ -331,6 +341,7 @@ describe("get_issue_summary", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {
@@ -364,6 +375,7 @@ describe("get_issue_details", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {
@@ -409,6 +421,7 @@ describe("get_issue_details", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {
@@ -457,6 +470,7 @@ describe("create_team", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {
@@ -484,6 +498,7 @@ describe("create_project", () => {
     const result = await tool(
       {
         accessToken: "access-token",
+        userId: "1",
         organizationSlug: null,
       },
       {

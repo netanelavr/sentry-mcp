@@ -12,6 +12,10 @@ export default class SentryMCP extends McpAgent<Env, unknown, WorkerProps> {
   });
 
   async init() {
-    configureServer(this.server, this.props);
+    configureServer(this.server, {
+      accessToken: this.props.accessToken,
+      organizationSlug: this.props.organizationSlug,
+      userId: this.props.id,
+    });
   }
 }

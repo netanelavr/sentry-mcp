@@ -35,4 +35,5 @@ export type ToolHandlers = {
 export type ServerContext = {
   accessToken: string;
   organizationSlug: string | null;
+  userId?: string | null;
 };
