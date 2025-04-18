@@ -5,17 +5,15 @@ on:
   push:
     branches: [main]
     paths:
-      - "src/mcp/**"
-      - "src/lib/sentry-api/**"
-      - "src/evals/**"
-      - "*.eval.ts"
+      - "packages/mcp-server/**"
+      - "packages/mcp-server-evals/**"
+      - "packages/mcp-server-mocks/**"
       - ".github/workflows/eval.yml"
   pull_request:
     paths:
-      - "src/mcp/**"
-      - "src/lib/sentry-api/**"
-      - "src/evals/**"
-      - "*.eval.ts"
+      - "packages/mcp-server/**"
+      - "packages/mcp-server-evals/**"
+      - "packages/mcp-server-mocks/**"
       - ".github/workflows/eval.yml"
 
 jobs:
@@ -34,7 +32,6 @@ jobs:
       - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda
         name: Install pnpm
         with:
-          version: 8
           run_install: false
 
       - name: Get pnpm store directory
@@ -51,7 +48,10 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run build
+        run: pnpm build
 
       - name: Run evals
         run: pnpm eval:ci evals
