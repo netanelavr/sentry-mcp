@@ -20,7 +20,7 @@ export function TaskRunner(model: LanguageModel = defaultModel) {
   return async function TaskRunner(input: string) {
     const transport = new Experimental_StdioMCPTransport({
       command: "npm",
-      args: ["run", "start:stdio", "--mocks"],
+      args: ["run", "start:stdio", "--", "--mocks"],
       env: {
         SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN!,
       },
