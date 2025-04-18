@@ -93,6 +93,7 @@ export default new Hono<{
         name: payload.user.name,
         accessToken: payload.access_token,
         organizationSlug: orgsList.length ? orgsList[0].slug : null,
+        scope: oauthReqInfo.scope.join(" "),
       } as WorkerProps,
     });
 
