@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import { z } from "zod";
 import { logError } from "../logging";
 import {
   SentryClientKeySchema,
@@ -11,6 +11,7 @@ import {
   SentrySearchErrorsEventSchema,
   SentrySearchSpansEventSchema,
   SentryTeamSchema,
+  TagSchema,
 } from "./schema";
 
 export class SentryApiService {
@@ -176,6 +177,28 @@ export class SentryApiService {
 
     const releasesBody = await response.json<unknown[]>();
     return releasesBody.map((i) => SentryReleaseSchema.parse(i));
+  }
+
+  async listTags({
+    organizationSlug,
+    dataset,
+  }: {
+    organizationSlug: string;
+    dataset?: "errors" | "search_issues";
+  }): Promise<z.infer<typeof TagSchema>[]> {
+    // TODO: this supports project in the query, but needs fixed
+    // to accept slugs
+    const searchQuery = new URLSearchParams();
+    if (dataset) {
+      searchQuery.set("dataset", dataset);
+    }
+
+    const response = await this.request(
+      `/organizations/${organizationSlug}/tags/${searchQuery.toString()}`,
+    );
+
+    const body = await response.json();
+    return z.array(TagSchema).parse(body);
   }
 
   async listIssues({

@@ -320,6 +320,33 @@ export const TOOL_HANDLERS = {
 
     return output;
   },
+  list_tags: async (context, { organizationSlug }) => {
+    const apiService = new SentryApiService(context.accessToken);
+
+    if (!organizationSlug && context.organizationSlug) {
+      organizationSlug = context.organizationSlug;
+    }
+
+    if (!organizationSlug) {
+      throw new Error("Organization slug is required");
+    }
+
+    const tagList = await apiService.listTags({ organizationSlug });
+
+    let output = `# Tags in **${organizationSlug}**\n\n`;
+
+    if (tagList.length === 0) {
+      output += "No tags found.\n";
+      return output;
+    }
+    output += tagList.map((tag) => [`- ${tag.key}`].join("\n")).join("\n");
+    output += "\n\n";
+
+    output += "# Using this information\n\n";
+    output += `- You can reference tags in the \`query\` parameter of various tools: \`tagName:tagValue\`.\n`;
+
+    return output;
+  },
   get_issue_summary: async (
     context,
     { issueId, issueUrl, organizationSlug },
