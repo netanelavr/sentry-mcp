@@ -211,12 +211,12 @@ export const TOOL_HANDLERS = {
           `**URL**: ${apiService.getIssueUrl(organizationSlug, issue.shortId)}`,
         ].join("\n"),
       )
-      .join("\n");
+      .join("\n\n");
     output += "\n\n";
 
     output += "# Using this information\n\n";
     output += `- You can reference the Issue ID in commit messages (e.g. \`Fixes <issueID>\`) to automatically close the issue when the commit is merged.\n`;
-    output += `- You can get more details about a specific issue by using the tool: \`get_issue_details(${organizationSlug}, <issueID>)\`\n`;
+    output += `- You can get more details about a specific issue by using the tool: \`get_issue_details(organizationSlug="${organizationSlug}", issueId=<issueID>)\`\n`;
 
     return output;
   },
@@ -486,7 +486,7 @@ export const TOOL_HANDLERS = {
 
     output += "# Using this information\n\n";
     output += `- You can reference the Issue ID in commit messages (e.g. \`Fixes <issueID>\`) to automatically close the issue when the commit is merged.\n`;
-    output += `- You can get more details about an error by using the tool: \`get_issue_details(${organizationSlug}, <issueID>)\`\n`;
+    output += `- You can get more details about an error by using the tool: \`get_issue_details(organizationSlug="${organizationSlug}", issueId=<issueID>)\`\n`;
 
     return output;
   },

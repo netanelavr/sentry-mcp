@@ -85,10 +85,18 @@ describe("list_issues", () => {
       **Last Seen**: 2025-04-12T11:34:11.000Z
       **URL**: https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-41
 
+      ## CLOUDFLARE-MCP-42
+
+      **Description**: Error: Tool list_issues is already registered
+      **Culprit**: Object.fetch(index)
+      **First Seen**: 2025-04-11T22:51:19.403Z
+      **Last Seen**: 2025-04-12T11:34:11.000Z
+      **URL**: https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-42
+
       # Using this information
 
       - You can reference the Issue ID in commit messages (e.g. \`Fixes <issueID>\`) to automatically close the issue when the commit is merged.
-      - You can get more details about a specific issue by using the tool: \`get_issue_details(sentry-mcp-evals, <issueID>)\`
+      - You can get more details about a specific issue by using the tool: \`get_issue_details(organizationSlug="sentry-mcp-evals", issueId=<issueID>)\`
       "
     `);
   });
@@ -190,7 +198,7 @@ describe("search_errors", () => {
       # Using this information
 
       - You can reference the Issue ID in commit messages (e.g. \`Fixes <issueID>\`) to automatically close the issue when the commit is merged.
-      - You can get more details about an error by using the tool: \`get_issue_details(sentry-mcp-evals, <issueID>)\`
+      - You can get more details about an error by using the tool: \`get_issue_details(organizationSlug="sentry-mcp-evals", issueId=<issueID>)\`
       "
     `);
   });
