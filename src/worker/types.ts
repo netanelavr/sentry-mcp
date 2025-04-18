@@ -5,6 +5,7 @@ import type { ServerContext } from "../mcp/types";
 export type WorkerProps = ServerContext & {
   id: string;
   name: string;
+  scope: string;
 };
 
 export interface Env {
