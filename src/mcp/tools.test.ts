@@ -165,6 +165,50 @@ describe("list_releases", () => {
   });
 });
 
+describe("list_tags", () => {
+  it("works", async () => {
+    const tool = TOOL_HANDLERS.list_tags;
+    const result = await tool(
+      {
+        accessToken: "access-token",
+        organizationSlug: null,
+      },
+      {
+        organizationSlug: "sentry-mcp-evals",
+        projectSlug: undefined,
+      },
+    );
+    expect(result).toMatchInlineSnapshot(`
+      "# Tags in **sentry-mcp-evals**
+
+      - transaction
+      - runtime.name
+      - level
+      - device
+      - os
+      - user
+      - runtime
+      - release
+      - url
+      - uptime_rule
+      - server_name
+      - browser
+      - os.name
+      - device.family
+      - replayId
+      - client_os.name
+      - environment
+      - service
+      - browser.name
+
+      # Using this information
+
+      - You can reference tags in the \`query\` parameter of various tools: \`tagName:tagValue\`.
+      "
+    `);
+  });
+});
+
 describe("search_errors", () => {
   it("serializes", async () => {
     const tool = TOOL_HANDLERS.search_errors;

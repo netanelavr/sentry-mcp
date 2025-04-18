@@ -1,6 +1,28 @@
 import { setupServer } from "msw/node";
 import { http, HttpResponse } from "msw";
 
+const TagsPayload = [
+  { key: "transaction", name: "Transaction", totalValues: 1080 },
+  { key: "runtime.name", name: "Runtime.Name", totalValues: 1080 },
+  { key: "level", name: "Level", totalValues: 1144 },
+  { key: "device", name: "Device", totalValues: 25 },
+  { key: "os", name: "OS", totalValues: 1133 },
+  { key: "user", name: "User", totalValues: 1080 },
+  { key: "runtime", name: "Runtime", totalValues: 1080 },
+  { key: "release", name: "Release", totalValues: 1135 },
+  { key: "url", name: "URL", totalValues: 1080 },
+  { key: "uptime_rule", name: "Uptime Rule", totalValues: 9 },
+  { key: "server_name", name: "Server", totalValues: 1080 },
+  { key: "browser", name: "Browser", totalValues: 56 },
+  { key: "os.name", name: "Os.Name", totalValues: 1135 },
+  { key: "device.family", name: "Device.Family", totalValues: 25 },
+  { key: "replayId", name: "Replayid", totalValues: 55 },
+  { key: "client_os.name", name: "Client Os.Name", totalValues: 1 },
+  { key: "environment", name: "Environment", totalValues: 1144 },
+  { key: "service", name: "Service", totalValues: 1135 },
+  { key: "browser.name", name: "Browser.Name", totalValues: 56 },
+];
+
 const ReleasePayload = {
   id: 1402755016,
   version: "8ce89484-0fec-4913-a2cd-e8e2d41dee36",
@@ -1160,6 +1182,9 @@ export const restHandlers = [
   http.get(
     "https://sentry.io/api/0/projects/sentry-mcp-evals/cloudflare-mcp/releases/",
     () => HttpResponse.json([ReleasePayload]),
+  ),
+  http.get("https://sentry.io/api/0/organizations/sentry-mcp-evals/tags/", () =>
+    HttpResponse.json(TagsPayload),
   ),
 ];
 

@@ -56,6 +56,12 @@ export const SentryReleaseSchema = z.object({
   projects: z.array(SentryProjectSchema),
 });
 
+export const TagSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  totalValues: z.number(),
+});
+
 export const SentryIssueSchema = z.object({
   id: z.union([z.string(), z.number()]),
   shortId: z.string(),
