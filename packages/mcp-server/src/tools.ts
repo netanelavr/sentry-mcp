@@ -1,4 +1,12 @@
-import { type ClientKey, SentryApiService } from "./api-client/index";
+import type { z } from "zod";
+import {
+  type AutofixRunStepDefaultSchema,
+  type AutofixRunStepRootCauseAnalysisSchema,
+  type AutofixRunStepSchema,
+  type AutofixRunStepSolutionSchema,
+  type ClientKey,
+  SentryApiService,
+} from "./api-client/index";
 import { formatEventOutput } from "./internal/formatting";
 import { extractIssueId } from "./internal/issue-helpers";
 import { logError } from "./logging";
@@ -620,4 +628,148 @@ export const TOOL_HANDLERS = {
       "- The `SENTRY_DSN` value is a URL that you can use to initialize Sentry's SDKs.\n";
     return output;
   },
+  begin_autofix: async (context, { organizationSlug, issueId, issueUrl }) => {
+    const apiService = apiServiceFromContext(context);
+
+    if (issueUrl) {
+      const resolved = extractIssueId(issueUrl);
+      if (!resolved) {
+        throw new Error(
+          "Invalid Sentry issue URL. Path should contain '/issues/{issue_id}'",
+        );
+      }
+      organizationSlug = resolved.organizationSlug;
+      issueId = resolved.issueId;
+    } else if (!issueId) {
+      throw new Error("Either issueId or issueUrl must be provided");
+    }
+
+    if (!organizationSlug && context.organizationSlug) {
+      organizationSlug = context.organizationSlug;
+    }
+
+    if (!organizationSlug) {
+      throw new Error("Organization slug is required");
+    }
+
+    const data = await apiService.startAutofix({
+      organizationSlug,
+      issueId,
+    });
+
+    return [
+      `# Autofix Started for Issue ${issueId}`,
+      "",
+      `**Run ID:**: ${data.run_id}`,
+      "",
+      "This operation may take some time, so you should call `get_autofix_status()` to check the status of the analysis, and repeat the process until its finished.",
+      "",
+      "You should also inform the user that the operation may take some time, and give them updates whenever you check the status of the operation..",
+      "",
+      "```",
+      issueUrl
+        ? `get_autofix_status(issueUrl="${issueUrl}")`
+        : `get_autofix_status(organizationSlug="${organizationSlug}", issueId="${issueId}")`,
+      "```",
+    ].join("\n");
+  },
+  get_autofix_status: async (
+    context,
+    { organizationSlug, issueId, issueUrl },
+  ) => {
+    const apiService = apiServiceFromContext(context);
+
+    if (issueUrl) {
+      const resolved = extractIssueId(issueUrl);
+      if (!resolved) {
+        throw new Error(
+          "Invalid Sentry issue URL. Path should contain '/issues/{issue_id}'",
+        );
+      }
+      organizationSlug = resolved.organizationSlug;
+      issueId = resolved.issueId;
+    } else if (!issueId) {
+      throw new Error("Either issueId or issueUrl must be provided");
+    }
+
+    if (!organizationSlug && context.organizationSlug) {
+      organizationSlug = context.organizationSlug;
+    }
+
+    if (!organizationSlug) {
+      throw new Error("Organization slug is required");
+    }
+
+    const { autofix } = await apiService.getAutofixState({
+      organizationSlug,
+      issueId,
+    });
+
+    let output = `# Autofix Status for Issue ${issueId}\n\n`;
+
+    for (const step of autofix.steps) {
+      output += getOutputForAutofixStep(step);
+      output += "\n";
+    }
+
+    return output;
+  },
 } satisfies ToolHandlers;
+
+function getOutputForAutofixStep(step: z.infer<typeof AutofixRunStepSchema>) {
+  let output = `## ${step.title}\n\n`;
+
+  if (step.status === "FAILED") {
+    output += `**Sentry hit an error completing this step.\n\n`;
+    return output;
+  }
+
+  if (step.status !== "COMPLETED") {
+    output += `**Sentry is still working on this step. Please check back in a minute.**\n\n`;
+    return output;
+  }
+
+  if (step.type === "root_cause_analysis") {
+    const typedStep = step as z.infer<
+      typeof AutofixRunStepRootCauseAnalysisSchema
+    >;
+
+    for (const cause of typedStep.causes) {
+      output += `${typedStep.description}\n\n`;
+      for (const entry of cause.root_cause_reproduction) {
+        output += `**${entry.title}**\n`;
+        output += `${entry.code_snippet_and_analysis}\n\n`;
+      }
+    }
+    return output;
+  }
+
+  if (step.type === "solution") {
+    const typedStep = step as z.infer<typeof AutofixRunStepSolutionSchema>;
+    output += `${typedStep.description}\n\n`;
+    for (const entry of typedStep.solution) {
+      output += `**${entry.title}**\n`;
+      output += `${entry.code_snippet_and_analysis}\n\n`;
+    }
+
+    if (typedStep.status === "FAILED") {
+      output += `**Sentry hit an error completing this step.\n\n`;
+    } else if (typedStep.status !== "COMPLETED") {
+      output += `**Sentry is still working on this step.**\n\n`;
+    }
+
+    return output;
+  }
+
+  const typedStep = step as z.infer<typeof AutofixRunStepDefaultSchema>;
+  for (const entry of typedStep.insights) {
+    output += `**${entry.insight}**\n`;
+    output += `${entry.justification}\n\n`;
+  }
+
+  // if (step.output_stream) {
+  //   output += `${step.output_stream}\n`;
+  // }
+
+  return output;
+}

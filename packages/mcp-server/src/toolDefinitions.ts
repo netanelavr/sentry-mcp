@@ -145,13 +145,18 @@ export const TOOL_DEFINITIONS = [
       "If the issue is an error, or you want additional information like the stacktrace, you should use `get_issue_details()` tool instead.",
       "",
       "<hints>",
+      "- If the user provides the issueUrl, you can ignore the organizationSlug and issueId parameters.",
       "- If you're uncertain about which organization to query, you should call `list_organizations()` first. This especially important if an issueId is passed.",
       "</hints>",
     ].join("\n"),
     paramsSchema: {
       organizationSlug: ParamOrganizationSlug.optional(),
       issueId: ParamIssueShortId.optional(),
-      issueUrl: z.string().url().optional(),
+      issueUrl: z
+        .string()
+        .url()
+        .describe("The URL of the issue to retrieve details for.")
+        .optional(),
     },
   },
   {
@@ -164,6 +169,7 @@ export const TOOL_DEFINITIONS = [
       "- Access detailed error information and stacktraces from Sentry",
       "",
       "<hints>",
+      "- If the user provides the issueUrl, you can ignore the organizationSlug and issueId parameters.",
       "- If you're uncertain about which organization to query, you should call `list_organizations()` first. This especially important if an issueId is passed.",
       "</hints>",
     ].join("\n"),
@@ -366,6 +372,74 @@ export const TOOL_DEFINITIONS = [
     paramsSchema: {
       organizationSlug: ParamOrganizationSlug.optional(),
       projectSlug: ParamProjectSlug,
+    },
+  },
+  {
+    name: "begin_autofix" as const,
+    description: [
+      "Analyze an issue in Sentry, identify a root cause, and suggest a fix for it.",
+      "",
+      "Use this tool when you need to:",
+      "- Determine the root cause of an issue.",
+      "- Generate a plan for fixing an issue.",
+      "- Implement a fix for an issue.",
+      "",
+      "This operation may take some time, so you should call `get_autofix_status()` to check the status of the analysis after you begin it.",
+      "",
+      "<examples>",
+      "### Analyze and propose a fix for 'ISSUE-123' in Sentry",
+      "",
+      "```",
+      "begin_autofix(organizationSlug='my-organization', issueId='ISSUE-123')",
+      "```",
+      "</examples>",
+      "",
+      "<hints>",
+      "- If the user provides the issueUrl, you can ignore the organizationSlug and issueId parameters.",
+      "- If you're uncertain about which organization to query, you should call `list_organizations()` first. This especially important if an issueId is passed.",
+      "</hints>",
+    ].join("\n"),
+    paramsSchema: {
+      organizationSlug: ParamOrganizationSlug.optional(),
+      issueId: ParamIssueShortId.optional(),
+      issueUrl: z
+        .string()
+        .url()
+        .describe("The URL of the issue to retrieve details for.")
+        .optional(),
+    },
+  },
+  {
+    name: "get_autofix_status" as const,
+    description: [
+      "Get the status of a root cause analysis for an issue in Sentry.",
+      "",
+      "Use this tool when you need to:",
+      "- Get the root cause analysis for an issue.",
+      "- Get the status of a fix for an issue.",
+      "",
+      "<examples>",
+      "### Get the status of a fix for the 'ISSUE-123' issue",
+      "",
+      "```",
+      "get_autofix_status(organizationSlug='my-organization', issueId='ISSUE-123')",
+      "```",
+      "",
+      "</examples>",
+      "",
+      "<hints>",
+      "- If the user provides the issueUrl, you can ignore the organizationSlug and issueId parameters.",
+      "- If you're uncertain about which organization to query, you should call `list_organizations()` first. This especially important if an issueId is passed.",
+      "</hints>",
+    ].join("\n"),
+    paramsSchema: {
+      organizationSlug: ParamOrganizationSlug.optional(),
+      issueId: ParamIssueShortId.optional(),
+      issueUrl: z
+        .string()
+        .url()
+        .describe("The URL of the issue to retrieve details for.")
+        .optional(),
     },
   },
 ];

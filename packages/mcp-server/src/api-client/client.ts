@@ -15,8 +15,12 @@ import {
   TagListSchema,
   ApiErrorSchema,
   ClientKeyListSchema,
+  AutofixRunSchema,
+  AutofixRunStateSchema,
 } from "./schema";
 import type {
+  AutofixRun,
+  AutofixRunState,
   ClientKey,
   ClientKeyList,
   Event,
@@ -435,5 +439,41 @@ export class SentryApiService {
 
     const body = await response.json();
     return SpansSearchResponseSchema.parse(body).data;
+  }
+
+  // POST https://us.sentry.io/api/0/issues/5485083130/autofix/
+  async startAutofix({
+    organizationSlug,
+    issueId,
+    eventId,
+    instruction = "",
+  }: {
+    organizationSlug: string;
+    issueId: string;
+    eventId?: string;
+    instruction?: string;
+  }): Promise<AutofixRun> {
+    const response = await this.request(`/issues/${issueId}/autofix/`, {
+      method: "POST",
+      body: JSON.stringify({
+        event_id: eventId,
+        instruction,
+      }),
+    });
+    const body = await response.json();
+    return AutofixRunSchema.parse(body);
+  }
+
+  // GET https://us.sentry.io/api/0/issues/5485083130/autofix/
+  async getAutofixState({
+    organizationSlug,
+    issueId,
+  }: {
+    organizationSlug: string;
+    issueId: string;
+  }): Promise<AutofixRunState> {
+    const response = await this.request(`/issues/${issueId}/autofix/`);
+    const body = await response.json();
+    return AutofixRunStateSchema.parse(body);
   }
 }

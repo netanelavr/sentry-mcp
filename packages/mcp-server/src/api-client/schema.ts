@@ -194,3 +194,109 @@ export const SpansSearchResponseSchema = EventsResponseSchema.extend({
     }),
   ),
 });
+
+export const AutofixRunSchema = z
+  .object({
+    run_id: z.union([z.string(), z.number()]),
+  })
+  .passthrough();
+
+const AutofixRunStepBaseSchema = z.object({
+  type: z.string(),
+  key: z.string(),
+  index: z.number(),
+  status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "FAILED"]),
+  title: z.string(),
+  output_stream: z.string().nullable(),
+  progress: z.array(
+    z.object({
+      data: z.unknown().nullable(),
+      message: z.string(),
+      timestamp: z.string(),
+      type: z.enum(["INFO", "WARNING", "ERROR"]),
+    }),
+  ),
+});
+
+export const AutofixRunStepDefaultSchema = AutofixRunStepBaseSchema.extend({
+  type: z.literal("default"),
+  insights: z.array(
+    z.object({
+      change_diff: z.unknown().nullable(),
+      generated_at_memory_index: z.number(),
+      insight: z.string(),
+      justification: z.string(),
+      type: z.literal("insight"),
+    }),
+  ),
+}).passthrough();
+
+export const AutofixRunStepRootCauseAnalysisSchema =
+  AutofixRunStepBaseSchema.extend({
+    type: z.literal("root_cause_analysis"),
+    causes: z.array(
+      z.object({
+        description: z.string(),
+        id: z.number(),
+        root_cause_reproduction: z.array(
+          z.object({
+            code_snippet_and_analysis: z.string(),
+            is_most_important_event: z.boolean(),
+            relevant_code_file: z
+              .object({
+                file_path: z.string(),
+                repo_name: z.string(),
+              })
+              .nullable(),
+            timeline_item_type: z.string(),
+            title: z.string(),
+          }),
+        ),
+      }),
+    ),
+  }).passthrough();
+
+export const AutofixRunStepSolutionSchema = AutofixRunStepBaseSchema.extend({
+  type: z.literal("solution"),
+  solution: z.array(
+    z.object({
+      code_snippet_and_analysis: z.string().nullable(),
+      is_active: z.boolean(),
+      is_most_important_event: z.boolean(),
+      relevant_code_file: z.null(),
+      timeline_item_type: z.union([
+        z.literal("internal_code"),
+        z.literal("repro_test"),
+      ]),
+      title: z.string(),
+    }),
+  ),
+}).passthrough();
+
+export const AutofixRunStepSchema = z.union([
+  AutofixRunStepDefaultSchema,
+  AutofixRunStepRootCauseAnalysisSchema,
+  AutofixRunStepSolutionSchema,
+  AutofixRunStepBaseSchema.passthrough(),
+]);
+
+export const AutofixRunStateSchema = z.object({
+  autofix: z
+    .object({
+      run_id: z.number(),
+      request: z
+        .object({
+          project_id: z.number(),
+          issue: z
+            .object({
+              id: z.number(),
+            })
+            .passthrough(),
+        })
+        .passthrough(),
+      updated_at: z.string(),
+      status: z.enum(["NEED_MORE_INFORMATION", "PROCESSING"]),
+      steps: z.array(AutofixRunStepSchema),
+    })
+    .passthrough(),
+});

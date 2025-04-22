@@ -1,6 +1,8 @@
 import { setupServer } from "msw/node";
 import { http, HttpResponse } from "msw";
 
+import autofixStateFixture from "./fixtures/autofix-state.json";
+
 const TagsPayload = [
   { key: "transaction", name: "Transaction", totalValues: 1080 },
   { key: "runtime.name", name: "Runtime.Name", totalValues: 1080 },
@@ -1204,6 +1206,22 @@ export const restHandlers = [
   http.get("https://sentry.io/api/0/organizations/sentry-mcp-evals/tags/", () =>
     HttpResponse.json(TagsPayload),
   ),
+  http.get("https://sentry.io/api/0/issues/8907376925/autofix/", () => {
+    return HttpResponse.json(autofixStateFixture);
+  }),
+  http.get("https://sentry.io/api/0/issues/PEATED-A8/autofix/", () => {
+    return HttpResponse.json(autofixStateFixture);
+  }),
+  http.post("https://sentry.io/api/0/issues/8907376925/autofix/", () => {
+    return HttpResponse.json({
+      run_id: 123,
+    });
+  }),
+  http.post("https://sentry.io/api/0/issues/PEATED-A8/autofix/", () => {
+    return HttpResponse.json({
+      run_id: 123,
+    });
+  }),
 ];
 
 export const mswServer = setupServer(...restHandlers);
