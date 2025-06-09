@@ -5,6 +5,8 @@ import autofixStateFixture from "./fixtures/autofix-state.json";
 import issueFixture from "./fixtures/issue.json";
 import eventsFixture from "./fixtures/event.json";
 import tagsFixture from "./fixtures/tags.json";
+import projectFixture from "./fixtures/project.json";
+import teamFixture from "./fixtures/team.json";
 
 const OrganizationPayload = {
   id: "4509106740723712",
@@ -339,40 +341,7 @@ export const restHandlers = buildHandlers([
     method: "get",
     path: "/api/0/organizations/sentry-mcp-evals/teams/",
     fetch: () => {
-      return HttpResponse.json([
-        {
-          id: "4509106740854784",
-          slug: "the-goats",
-          name: "the-goats",
-          dateCreated: "2025-04-06T14:11:23.961739Z",
-          isMember: true,
-          teamRole: "admin",
-          flags: { "idp:provisioned": false },
-          access: [
-            "team:read",
-            "alerts:read",
-            "event:write",
-            "team:write",
-            "team:admin",
-            "event:read",
-            "org:read",
-            "member:read",
-            "project:admin",
-            "project:write",
-            "org:integrations",
-            "project:releases",
-            "alerts:write",
-            "event:admin",
-            "project:read",
-          ],
-          hasAccess: true,
-          isPending: false,
-          memberCount: 1,
-          avatar: { avatarType: "letter_avatar", avatarUuid: null },
-          externalTeams: [],
-          projects: [],
-        },
-      ]);
+      return HttpResponse.json([teamFixture]);
     },
   },
   {
@@ -381,75 +350,8 @@ export const restHandlers = buildHandlers([
     fetch: () => {
       return HttpResponse.json([
         {
-          team: {
-            id: "4509106733776896",
-            slug: "the-goats",
-            name: "the-goats",
-          },
-          teams: [
-            {
-              id: "4509106733776896",
-              slug: "the-goats",
-              name: "the-goats",
-            },
-          ],
-          id: "4509106749636608",
-          name: "cloudflare-mcp",
-          slug: "cloudflare-mcp",
-          isBookmarked: false,
-          isMember: true,
-          access: [
-            "event:admin",
-            "alerts:read",
-            "project:write",
-            "org:integrations",
-            "alerts:write",
-            "member:read",
-            "team:write",
-            "project:read",
-            "event:read",
-            "event:write",
-            "project:admin",
-            "org:read",
-            "team:admin",
-            "project:releases",
-            "team:read",
-          ],
-          hasAccess: true,
-          dateCreated: "2025-04-06T14:13:37.825970Z",
-          environments: [],
-          eventProcessing: { symbolicationDegraded: false },
-          features: [
-            "discard-groups",
-            "alert-filters",
-            "similarity-embeddings",
-            "similarity-indexing",
-            "similarity-view",
-          ],
-          firstEvent: null,
-          firstTransactionEvent: false,
-          hasSessions: false,
-          hasProfiles: false,
-          hasReplays: false,
-          hasFeedbacks: false,
-          hasNewFeedbacks: false,
-          hasMonitors: false,
-          hasMinifiedStackTrace: false,
-          hasInsightsHttp: false,
-          hasInsightsDb: false,
-          hasInsightsAssets: false,
-          hasInsightsAppStart: false,
-          hasInsightsScreenLoad: false,
-          hasInsightsVitals: false,
-          hasInsightsCaches: false,
-          hasInsightsQueues: false,
-          hasInsightsLlmMonitoring: false,
-          platform: "node",
-          platforms: [],
-          latestRelease: null,
-          hasUserReports: false,
-          hasFlags: false,
-          latestDeploys: null,
+          ...projectFixture,
+          id: "4509106749636608", // Different ID for GET endpoint
         },
       ]);
     },
@@ -459,100 +361,57 @@ export const restHandlers = buildHandlers([
     path: "/api/0/organizations/sentry-mcp-evals/teams/",
     fetch: () => {
       // TODO: validate payload (only accept 'the-goats' for team name)
-      return HttpResponse.json({
-        id: "4509109078196224",
-        slug: "the-goats",
-        name: "the-goats",
-        dateCreated: "2025-04-07T00:05:48.196710Z",
-        isMember: true,
-        teamRole: "admin",
-        flags: { "idp:provisioned": false },
-        access: [
-          "event:read",
-          "org:integrations",
-          "org:read",
-          "member:read",
-          "alerts:write",
-          "event:admin",
-          "team:admin",
-          "project:releases",
-          "team:read",
-          "project:write",
-          "event:write",
-          "team:write",
-          "project:read",
-          "project:admin",
-          "alerts:read",
-        ],
-        hasAccess: true,
-        isPending: false,
-        memberCount: 1,
-        avatar: { avatarType: "letter_avatar", avatarUuid: null },
-      });
+      return HttpResponse.json(
+        {
+          ...teamFixture,
+          id: "4509109078196224",
+          dateCreated: "2025-04-07T00:05:48.196710Z",
+          access: [
+            "event:read",
+            "org:integrations",
+            "org:read",
+            "member:read",
+            "alerts:write",
+            "event:admin",
+            "team:admin",
+            "project:releases",
+            "team:read",
+            "project:write",
+            "event:write",
+            "team:write",
+            "project:read",
+            "project:admin",
+            "alerts:read",
+          ],
+        },
+        { status: 201 },
+      );
     },
   },
   {
     method: "post",
     path: "/api/0/teams/sentry-mcp-evals/the-goats/projects/",
-    fetch: () => {
+    fetch: async ({ request }) => {
       // TODO: validate payload (only accept 'cloudflare-mcp' for project name)
+      const body = (await request.json()) as any;
       return HttpResponse.json({
-        id: "4509109104082945",
-        slug: "cloudflare-mcp",
-        name: "cloudflare-mcp",
-        platform: "javascript",
-        dateCreated: "2025-04-07T00:12:23.143074Z",
-        isBookmarked: false,
-        isMember: true,
-        features: [
-          "discard-groups",
-          "alert-filters",
-          "similarity-embeddings",
-          "similarity-indexing",
-          "similarity-view",
-        ],
-        firstEvent: null,
-        firstTransactionEvent: false,
-        access: [
-          "team:write",
-          "alerts:write",
-          "event:write",
-          "org:read",
-          "alerts:read",
-          "event:admin",
-          "project:admin",
-          "event:read",
-          "org:integrations",
-          "project:read",
-          "project:releases",
-          "project:write",
-          "member:read",
-          "team:read",
-          "team:admin",
-        ],
-        hasAccess: true,
-        hasMinifiedStackTrace: false,
-        hasMonitors: false,
-        hasProfiles: false,
-        hasReplays: false,
-        hasFeedbacks: false,
-        hasFlags: false,
-        hasNewFeedbacks: false,
-        hasSessions: false,
-        hasInsightsHttp: false,
-        hasInsightsDb: false,
-        hasInsightsAssets: false,
-        hasInsightsAppStart: false,
-        hasInsightsScreenLoad: false,
-        hasInsightsVitals: false,
-        hasInsightsCaches: false,
-        hasInsightsQueues: false,
-        hasInsightsLlmMonitoring: false,
-        isInternal: false,
-        isPublic: false,
-        avatar: { avatarType: "letter_avatar", avatarUuid: null },
-        color: "#bf3f55",
-        status: "active",
+        ...projectFixture,
+        name: body?.name || "cloudflare-mcp",
+        slug: body?.slug || "cloudflare-mcp",
+        platform: body?.platform || "node",
+      });
+    },
+  },
+  {
+    method: "put",
+    path: "/api/0/projects/sentry-mcp-evals/cloudflare-mcp/",
+    fetch: async ({ request }) => {
+      const body = (await request.json()) as any;
+      return HttpResponse.json({
+        ...projectFixture,
+        slug: body?.slug || "cloudflare-mcp",
+        name: body?.name || "cloudflare-mcp",
+        platform: body?.platform || "node",
       });
     },
   },
@@ -849,6 +708,20 @@ export const restHandlers = buildHandlers([
     method: "post",
     path: "/api/0/organizations/sentry-mcp-evals/issues/PEATED-A8/autofix/",
     fetch: () => HttpResponse.json({ run_id: 123 }),
+  },
+  {
+    method: "post",
+    path: "/api/0/projects/sentry-mcp-evals/cloudflare-mcp/teams/the-goats/",
+    fetch: async ({ request }) => {
+      const body = (await request.json()) as any;
+      return HttpResponse.json({
+        ...teamFixture,
+        id: "4509109078196224",
+        slug: body?.slug || "the-goats",
+        name: body?.name || "the-goats",
+        dateCreated: "2025-04-07T00:05:48.196710Z",
+      });
+    },
   },
 ]);
 

@@ -267,6 +267,60 @@ export class SentryApiService {
     return ProjectSchema.parse(await response.json());
   }
 
+  async updateProject(
+    {
+      organizationSlug,
+      projectSlug,
+      name,
+      slug,
+      platform,
+    }: {
+      organizationSlug: string;
+      projectSlug: string;
+      name?: string;
+      slug?: string;
+      platform?: string;
+    },
+    opts?: RequestOptions,
+  ): Promise<Project> {
+    const updateData: Record<string, any> = {};
+    if (name !== undefined) updateData.name = name;
+    if (slug !== undefined) updateData.slug = slug;
+    if (platform !== undefined) updateData.platform = platform;
+
+    const response = await this.request(
+      `/projects/${organizationSlug}/${projectSlug}/`,
+      {
+        method: "PUT",
+        body: JSON.stringify(updateData),
+      },
+      opts,
+    );
+    return ProjectSchema.parse(await response.json());
+  }
+
+  async addTeamToProject(
+    {
+      organizationSlug,
+      projectSlug,
+      teamSlug,
+    }: {
+      organizationSlug: string;
+      projectSlug: string;
+      teamSlug: string;
+    },
+    opts?: RequestOptions,
+  ): Promise<void> {
+    await this.request(
+      `/projects/${organizationSlug}/${projectSlug}/teams/${teamSlug}/`,
+      {
+        method: "POST",
+        body: JSON.stringify({}),
+      },
+      opts,
+    );
+  }
+
   async createClientKey(
     {
       organizationSlug,

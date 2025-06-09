@@ -680,7 +680,7 @@ describe("create_project", () => {
         organizationSlug: "sentry-mcp-evals",
         teamSlug: "the-goats",
         name: "cloudflare-mcp",
-        platform: "javascript",
+        platform: "node",
         regionUrl: undefined,
       },
     );
@@ -696,6 +696,80 @@ describe("create_project", () => {
 
       - You can reference the **SENTRY_DSN** value to initialize Sentry's SDKs.
       - You should always inform the user of the **SENTRY_DSN** and Project Slug values.
+      "
+    `);
+  });
+});
+
+describe("update_project", () => {
+  it("updates project settings", async () => {
+    const tool = TOOL_HANDLERS.update_project;
+    const result = await tool(
+      {
+        accessToken: "access-token",
+        userId: "1",
+        organizationSlug: null,
+      },
+      {
+        organizationSlug: "sentry-mcp-evals",
+        projectSlug: "cloudflare-mcp",
+        name: "Updated Project Name",
+        slug: "updated-project-slug",
+        platform: "python",
+        teamSlug: undefined,
+        regionUrl: undefined,
+      },
+    );
+    expect(result).toMatchInlineSnapshot(`
+      "# Updated Project in **sentry-mcp-evals**
+
+      **ID**: 4509109104082945
+      **Slug**: updated-project-slug
+      **Name**: Updated Project Name
+      **Platform**: python
+
+      ## Updates Applied
+      - Updated name to "Updated Project Name"
+      - Updated slug to "updated-project-slug"
+      - Updated platform to "python"
+
+      # Using this information
+
+      - The project is now accessible at slug: \`updated-project-slug\`
+      "
+    `);
+  });
+
+  it("assigns project to team", async () => {
+    const tool = TOOL_HANDLERS.update_project;
+    const result = await tool(
+      {
+        accessToken: "access-token",
+        userId: "1",
+        organizationSlug: null,
+      },
+      {
+        organizationSlug: "sentry-mcp-evals",
+        projectSlug: "cloudflare-mcp",
+        teamSlug: "the-goats",
+        regionUrl: undefined,
+      },
+    );
+    expect(result).toMatchInlineSnapshot(`
+      "# Updated Project in **sentry-mcp-evals**
+
+      **ID**: 4509106749636608
+      **Slug**: cloudflare-mcp
+      **Name**: cloudflare-mcp
+      **Platform**: node
+
+      ## Updates Applied
+      - Updated team assignment to "the-goats"
+
+      # Using this information
+
+      - The project is now accessible at slug: \`cloudflare-mcp\`
+      - The project is now assigned to the \`the-goats\` team
       "
     `);
   });
