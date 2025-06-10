@@ -7,6 +7,7 @@ import {
   type ClientKey,
   type Project,
   SentryApiService,
+  type AssignedTo,
 } from "./api-client/index";
 import { formatIssueOutput } from "./internal/formatting";
 import { parseIssueParams } from "./internal/issue-helpers";
@@ -350,6 +351,89 @@ export const TOOL_HANDLERS = {
       event,
       apiService,
     });
+  },
+  update_issue: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+
+    // Validate that we have the minimum required parameters
+    if (!params.issueUrl && !params.issueId) {
+      throw new UserInputError(
+        "Either `issueId` or `issueUrl` must be provided",
+      );
+    }
+
+    if (!params.issueUrl && !params.organizationSlug) {
+      throw new UserInputError(
+        "`organizationSlug` is required when providing `issueId`",
+      );
+    }
+
+    // Validate that at least one update parameter is provided
+    if (!params.status && !params.assignedTo) {
+      throw new UserInputError(
+        "At least one of `status` or `assignedTo` must be provided to update the issue",
+      );
+    }
+
+    const { organizationSlug: orgSlug, issueId: parsedIssueId } =
+      parseIssueParams({
+        organizationSlug: params.organizationSlug,
+        issueId: params.issueId,
+        issueUrl: params.issueUrl,
+      });
+
+    setTag("organization.slug", orgSlug);
+
+    // Get current issue details first
+    const currentIssue = await apiService.getIssue({
+      organizationSlug: orgSlug,
+      issueId: parsedIssueId!,
+    });
+
+    // Update the issue
+    const updatedIssue = await apiService.updateIssue({
+      organizationSlug: orgSlug,
+      issueId: parsedIssueId!,
+      status: params.status,
+      assignedTo: params.assignedTo,
+    });
+
+    let output = `# Issue ${updatedIssue.shortId} Updated in **${orgSlug}**\n\n`;
+    output += `**Issue**: ${updatedIssue.title}\n`;
+    output += `**URL**: ${apiService.getIssueUrl(orgSlug, updatedIssue.shortId)}\n\n`;
+
+    // Show what changed
+    output += "## Changes Made\n\n";
+
+    if (params.status && currentIssue.status !== params.status) {
+      output += `**Status**: ${currentIssue.status} → **${params.status}**\n`;
+    }
+
+    if (params.assignedTo) {
+      const oldAssignee = formatAssignedTo(currentIssue.assignedTo ?? null);
+      const newAssignee =
+        params.assignedTo === "me" ? "You" : params.assignedTo;
+      output += `**Assigned To**: ${oldAssignee} → **${newAssignee}**\n`;
+    }
+
+    output += "\n## Current Status\n\n";
+    output += `**Status**: ${updatedIssue.status}\n`;
+    const currentAssignee = formatAssignedTo(updatedIssue.assignedTo ?? null);
+    output += `**Assigned To**: ${currentAssignee}\n`;
+
+    output += "\n# Using this information\n\n";
+    output += `- The issue has been successfully updated in Sentry\n`;
+    output += `- You can view the issue details using: \`get_issue_details(organizationSlug="${orgSlug}", issueId="${updatedIssue.shortId}")\`\n`;
+
+    if (params.status === "resolved") {
+      output += `- The issue is now marked as resolved and will no longer generate alerts\n`;
+    } else if (params.status === "ignored") {
+      output += `- The issue is now ignored and will not generate alerts until it escalates\n`;
+    }
+
+    return output;
   },
   find_errors: async (context, params) => {
     const apiService = apiServiceFromContext(context, {
@@ -745,4 +829,23 @@ function getOutputForAutofixStep(step: z.infer<typeof AutofixRunStepSchema>) {
   }
 
   return output;
+}
+
+/**
+ * Helper function to format assignedTo field for display
+ */
+function formatAssignedTo(assignedTo: AssignedTo): string {
+  if (!assignedTo) {
+    return "Unassigned";
+  }
+
+  if (typeof assignedTo === "string") {
+    return assignedTo;
+  }
+
+  if (typeof assignedTo === "object" && assignedTo.name) {
+    return assignedTo.name;
+  }
+
+  return "Unknown";
 }
