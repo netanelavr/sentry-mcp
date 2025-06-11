@@ -2,22 +2,30 @@ import { Accordion } from "../ui/accordion";
 import { Link } from "../ui/base";
 import CodeSnippet from "../ui/code-snippet";
 import SetupGuide from "./setup-guide";
-import { SCOPES } from "../../../constants";
+import { NPM_PACKAGE_NAME, SCOPES } from "../../../constants";
 import { Prose } from "../ui/prose";
-import Note from "../ui/note";
 
 const mcpServerName = import.meta.env.DEV ? "sentry-dev" : "sentry";
 
 export default function RemoteSetup() {
-  const mcpStdioSnippet = `npx @sentry/mcp-server@latest`;
+  const mcpStdioSnippet = `npx ${NPM_PACKAGE_NAME}@latest`;
+
+  const coreConfig = {
+    command: "npx",
+    args: ["@sentry/mcp-server@latest"],
+    env: {
+      SENTRY_ACCESS_TOKEN: "sentry-user-token",
+      SENTRY_HOST: "sentry.io",
+    },
+  };
 
   return (
     <>
       <Prose>
         <p>
           The stdio client is made available on npm at{" "}
-          <Link href="https://www.npmjs.com/package/@sentry/mcp-server">
-            @sentry/mcp-server
+          <Link href={`https://www.npmjs.com/package/${NPM_PACKAGE_NAME}`}>
+            {NPM_PACKAGE_NAME}
           </Link>
           .
         </p>
@@ -29,8 +37,8 @@ export default function RemoteSetup() {
         </p>
 
         <p>
-          Create a Personal Access Token in your account settings with the
-          following scopes:
+          Create a User Auth Token in your account settings with the following
+          scopes:
         </p>
         <ul>
           {Object.entries(SCOPES).map(([scope, description]) => (
@@ -46,7 +54,7 @@ export default function RemoteSetup() {
         <CodeSnippet
           snippet={[
             `${mcpStdioSnippet}`,
-            "--access-token=sentry-pat",
+            "--access-token=sentry-user-token",
             "--host=sentry.io",
           ].join(" \\\n  ")}
         />
@@ -74,14 +82,7 @@ export default function RemoteSetup() {
                 snippet={JSON.stringify(
                   {
                     mcpServers: {
-                      sentry: {
-                        command: "npx",
-                        args: ["@sentry/mcp-server@latest"],
-                        env: {
-                          SENTRY_AUTH_TOKEN: "sentry-pat",
-                          SENTRY_HOST: "sentry.io",
-                        },
-                      },
+                      sentry: coreConfig,
                     },
                   },
                   undefined,
@@ -102,12 +103,20 @@ export default function RemoteSetup() {
             <li>
               Select <strong>Add Server</strong>.
             </li>
+            <li>
+              <CodeSnippet
+                snippet={JSON.stringify(
+                  {
+                    mcpServers: {
+                      sentry: coreConfig,
+                    },
+                  },
+                  undefined,
+                  2,
+                )}
+              />
+            </li>
           </ol>
-          <p>
-            <small>
-              Note: Windsurf requires an enterprise account to utilize MCP. 😕
-            </small>
-          </p>
         </SetupGuide>
 
         <SetupGuide id="vscode" title="Visual Studio Code">
@@ -133,12 +142,7 @@ export default function RemoteSetup() {
                   {
                     [mcpServerName]: {
                       type: "stdio",
-                      command: "npx",
-                      args: ["@sentry/mcp-server@latest"],
-                      env: {
-                        SENTRY_AUTH_TOKEN: "sentry-pat",
-                        SENTRY_HOST: "sentry.io",
-                      },
+                      ...coreConfig,
                     },
                   },
                   undefined,
@@ -167,14 +171,7 @@ export default function RemoteSetup() {
                 snippet={JSON.stringify(
                   {
                     context_servers: {
-                      [mcpServerName]: {
-                        command: "npx",
-                        args: ["@sentry/mcp-server@latest"],
-                        env: {
-                          SENTRY_AUTH_TOKEN: "sentry-pat",
-                          SENTRY_HOST: "sentry.io",
-                        },
-                      },
+                      [mcpServerName]: coreConfig,
                       settings: {},
                     },
                   },

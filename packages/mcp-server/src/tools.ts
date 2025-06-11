@@ -1,3 +1,27 @@
+/**
+ * Tool implementation handlers for the Sentry MCP server.
+ *
+ * Contains runtime implementations for all MCP tools defined in `toolDefinitions.ts`.
+ * Each handler processes tool invocations, validates parameters, calls the Sentry API,
+ * and returns markdown-formatted responses.
+ *
+ * @example Basic Handler Pattern
+ * ```typescript
+ * tool_name: async (context, params) => {
+ *   if (!params.organizationSlug) {
+ *     throw new UserInputError("Organization slug is required");
+ *   }
+ *
+ *   const apiService = apiServiceFromContext(context, {
+ *     regionUrl: params.regionUrl,
+ *   });
+ *   setTag("organization.slug", params.organizationSlug);
+ *
+ *   const results = await apiService.someMethod(params);
+ *   return `# Results\n\n${formatResults(results)}`;
+ * },
+ * ```
+ */
 import type { z } from "zod";
 import {
   type AutofixRunStepDefaultSchema,
@@ -5,23 +29,51 @@ import {
   type AutofixRunStepSchema,
   type AutofixRunStepSolutionSchema,
   type ClientKey,
+  type Project,
   SentryApiService,
+  type AssignedTo,
 } from "./api-client/index";
-import { formatEventOutput } from "./internal/formatting";
-import { extractIssueId } from "./internal/issue-helpers";
+import { formatIssueOutput } from "./internal/formatting";
+import { parseIssueParams } from "./internal/issue-helpers";
 import { logError } from "./logging";
 import type { ServerContext, ToolHandlers } from "./types";
+import { setTag } from "@sentry/core";
+import { UserInputError } from "./errors";
 
-function apiServiceFromContext(context: ServerContext) {
+function apiServiceFromContext(
+  context: ServerContext,
+  opts: { regionUrl?: string } = {},
+) {
+  let host = context.host;
+
+  if (opts.regionUrl) {
+    try {
+      host = new URL(opts.regionUrl).host;
+    } catch (error) {
+      throw new UserInputError(
+        `Invalid regionUrl provided: ${opts.regionUrl}. Must be a valid URL.`,
+      );
+    }
+  }
+
   return new SentryApiService({
-    host: context.host,
+    host,
     accessToken: context.accessToken,
   });
 }
 
 export const TOOL_HANDLERS = {
-  list_organizations: async (context) => {
-    const apiService = apiServiceFromContext(context);
+  whoami: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const user = await apiService.getAuthenticatedUser();
+    return `You are authenticated as ${user.name} (${user.email}).\n\nYour Sentry User ID is ${user.id}.`;
+  },
+  find_organizations: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
     const organizations = await apiService.listOrganizations();
 
     let output = "# Organizations\n\n";
@@ -31,71 +83,82 @@ export const TOOL_HANDLERS = {
       return output;
     }
 
-    output += organizations.map((org) => `- ${org.slug}\n`).join("");
+    output += organizations
+      .map((org) =>
+        [
+          `## **${org.slug}**`,
+          "",
+          `**Web URL:** ${org.links.organizationUrl}`,
+          `**Region URL:** ${org.links.regionUrl}`,
+        ].join("\n"),
+      )
+      .join("\n\n");
+
+    output += "\n\n# Using this information\n\n";
+    output += `- The organization's name is the identifier for the organization, and is used in many tools for \`organizationSlug\`.\n`;
+    output += `- If a tool supports passing in the \`regionUrl\`, you MUST pass in the correct value there.\n`;
 
     return output;
   },
-  list_teams: async (context, { organizationSlug }) => {
-    const apiService = apiServiceFromContext(context);
-
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
-    }
+  find_teams: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const organizationSlug = params.organizationSlug;
 
     if (!organizationSlug) {
-      throw new Error("Organization slug is required");
+      throw new UserInputError(
+        "Organization slug is required. Please provide an organizationSlug parameter.",
+      );
     }
 
+    setTag("organization.slug", organizationSlug);
+
     const teams = await apiService.listTeams(organizationSlug);
-
     let output = `# Teams in **${organizationSlug}**\n\n`;
-
     if (teams.length === 0) {
       output += "No teams found.\n";
       return output;
     }
-
     output += teams.map((team) => `- ${team.slug}\n`).join("");
-
     return output;
   },
-  list_projects: async (context, { organizationSlug }) => {
-    const apiService = apiServiceFromContext(context);
-
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
-    }
+  find_projects: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const organizationSlug = params.organizationSlug;
 
     if (!organizationSlug) {
-      throw new Error("Organization slug is required");
+      throw new UserInputError(
+        "Organization slug is required. Please provide an organizationSlug parameter.",
+      );
     }
 
+    setTag("organization.slug", organizationSlug);
+
     const projects = await apiService.listProjects(organizationSlug);
-
     let output = `# Projects in **${organizationSlug}**\n\n`;
-
     if (projects.length === 0) {
       output += "No projects found.\n";
       return output;
     }
-
-    output += projects.map((project) => `- ${project.slug}\n`).join("");
-
+    output += projects.map((project) => `- **${project.slug}**\n`).join("");
     return output;
   },
-  list_issues: async (
-    context,
-    { organizationSlug, projectSlug, query, sortBy },
-  ) => {
-    const apiService = apiServiceFromContext(context);
-
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
-    }
+  find_issues: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const organizationSlug = params.organizationSlug;
 
     if (!organizationSlug) {
-      throw new Error("Organization slug is required");
+      throw new UserInputError(
+        "Organization slug is required. Please provide an organizationSlug parameter.",
+      );
     }
+
+    setTag("organization.slug", organizationSlug);
 
     const sortByMap = {
       last_seen: "date" as const,
@@ -103,16 +166,15 @@ export const TOOL_HANDLERS = {
       count: "freq" as const,
       userCount: "user" as const,
     };
-
     const issues = await apiService.listIssues({
       organizationSlug,
-      projectSlug,
-      query,
-      sortBy: sortBy ? sortByMap[sortBy as keyof typeof sortByMap] : undefined,
+      projectSlug: params.projectSlug,
+      query: params.query,
+      sortBy: params.sortBy
+        ? sortByMap[params.sortBy as keyof typeof sortByMap]
+        : undefined,
     });
-
-    let output = `# Issues in **${organizationSlug}${projectSlug ? `/${projectSlug}` : ""}**\n\n`;
-
+    let output = `# Issues in **${organizationSlug}${params.projectSlug ? `/${params.projectSlug}` : ""}**\n\n`;
     if (issues.length === 0) {
       output += "No issues found.\n";
       return output;
@@ -131,36 +193,29 @@ export const TOOL_HANDLERS = {
       )
       .join("\n\n");
     output += "\n\n";
-
     output += "# Using this information\n\n";
     output += `- You can reference the Issue ID in commit messages (e.g. \`Fixes <issueID>\`) to automatically close the issue when the commit is merged.\n`;
     output += `- You can get more details about a specific issue by using the tool: \`get_issue_details(organizationSlug="${organizationSlug}", issueId=<issueID>)\`\n`;
-
     return output;
   },
-  list_releases: async (context, { organizationSlug, projectSlug }) => {
-    const apiService = apiServiceFromContext(context);
+  find_releases: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const organizationSlug = params.organizationSlug;
 
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
-    }
-
-    if (!organizationSlug) {
-      throw new Error("Organization slug is required");
-    }
+    setTag("organization.slug", organizationSlug);
 
     const releases = await apiService.listReleases({
       organizationSlug,
-      projectSlug,
+      projectSlug: params.projectSlug,
+      query: params.query,
     });
-
-    let output = `# Releases in **${organizationSlug}${projectSlug ? `/${projectSlug}` : ""}**\n\n`;
-
+    let output = `# Releases in **${organizationSlug}${params.projectSlug ? `/${params.projectSlug}` : ""}**\n\n`;
     if (releases.length === 0) {
       output += "No releases found.\n";
       return output;
     }
-
     output += releases
       .map((release) => {
         const releaseInfo = [
@@ -168,29 +223,24 @@ export const TOOL_HANDLERS = {
           "",
           `**Created**: ${new Date(release.dateCreated).toISOString()}`,
         ];
-
         if (release.dateReleased) {
           releaseInfo.push(
             `**Released**: ${new Date(release.dateReleased).toISOString()}`,
           );
         }
-
         if (release.firstEvent) {
           releaseInfo.push(
             `**First Event**: ${new Date(release.firstEvent).toISOString()}`,
           );
         }
-
         if (release.lastEvent) {
           releaseInfo.push(
             `**Last Event**: ${new Date(release.lastEvent).toISOString()}`,
           );
         }
-
         if (release.newGroups !== undefined) {
           releaseInfo.push(`**New Issues**: ${release.newGroups}`);
         }
-
         if (release.projects && release.projects.length > 0) {
           releaseInfo.push(
             `**Projects**: ${release.projects.map((p) => p.name).join(", ")}`,
@@ -207,7 +257,6 @@ export const TOOL_HANDLERS = {
             `**Commit Date**: ${new Date(release.lastCommit.dateCreated).toISOString()}`,
           );
         }
-
         if (release.lastDeploy) {
           releaseInfo.push("", `### Last Deploy`, "");
           releaseInfo.push(`**Deploy ID**: ${release.lastDeploy.id}`);
@@ -225,255 +274,262 @@ export const TOOL_HANDLERS = {
             );
           }
         }
-
         return releaseInfo.join("\n");
       })
       .join("\n\n");
-
     output += "\n\n";
-
     output += "# Using this information\n\n";
     output += `- You can reference the Release version in commit messages or documentation.\n`;
-    output += `- You can search for issues in a specific release using the \`search_errors()\` tool with the query \`release:${releases.length ? releases[0]!.version : "VERSION"}\`.\n`;
-
+    output += `- You can search for issues in a specific release using the \`find_errors()\` tool with the query \`release:${releases.length ? releases[0]!.shortVersion : "VERSION"}\`.\n`;
     return output;
   },
-  list_tags: async (context, { organizationSlug }) => {
-    const apiService = apiServiceFromContext(context);
+  find_tags: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const organizationSlug = params.organizationSlug;
 
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
-    }
+    setTag("organization.slug", organizationSlug);
 
-    if (!organizationSlug) {
-      throw new Error("Organization slug is required");
-    }
-
-    const tagList = await apiService.listTags({ organizationSlug });
-
+    const tagList = await apiService.listTags({ organizationSlug }, {});
     let output = `# Tags in **${organizationSlug}**\n\n`;
-
     if (tagList.length === 0) {
       output += "No tags found.\n";
       return output;
     }
     output += tagList.map((tag) => [`- ${tag.key}`].join("\n")).join("\n");
     output += "\n\n";
-
     output += "# Using this information\n\n";
     output += `- You can reference tags in the \`query\` parameter of various tools: \`tagName:tagValue\`.\n`;
-
     return output;
   },
-  get_issue_summary: async (
-    context,
-    { issueId, issueUrl, organizationSlug },
-  ) => {
-    const apiService = apiServiceFromContext(context);
-
-    if (issueUrl) {
-      const resolved = extractIssueId(issueUrl);
-      if (!resolved) {
-        throw new Error(
-          "Invalid Sentry issue URL. Path should contain '/issues/{issue_id}'",
-        );
-      }
-      organizationSlug = resolved.organizationSlug;
-      issueId = resolved.issueId;
-    } else if (!issueId) {
-      throw new Error("Either issueId or issueUrl must be provided");
-    }
-
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
-    }
-
-    if (!organizationSlug) {
-      throw new Error("Organization slug is required");
-    }
-
-    const issue = await apiService.getIssue({
-      organizationSlug,
-      issueId,
+  get_issue_details: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
     });
 
-    let output = `# Issue ${issue.shortId} in **${organizationSlug}**\n\n`;
-    output += `**Description**: ${issue.title}\n`;
-    output += `**Culprit**: ${issue.culprit}\n`;
-    output += `**First Seen**: ${new Date(issue.firstSeen).toISOString()}\n`;
-    output += `**Last Seen**: ${new Date(issue.lastSeen).toISOString()}\n`;
-    output += `**Occurrences**: ${issue.count}\n`;
-    output += `**Users Impacted**: ${issue.userCount}\n`;
-    output += `**Status**: ${issue.status}\n`;
-    output += `**Platform**: ${issue.platform}\n`;
-    output += `**Project**: ${issue.project.name}\n`;
-    output += `**URL**: ${apiService.getIssueUrl(
-      organizationSlug,
-      issue.shortId,
-    )}\n`;
-
-    return output;
-  },
-  get_issue_details: async (
-    context,
-    { issueId, issueUrl, organizationSlug },
-  ) => {
-    const apiService = apiServiceFromContext(context);
-
-    if (issueUrl) {
-      const resolved = extractIssueId(issueUrl);
-      if (!resolved) {
-        throw new Error(
-          "Invalid Sentry issue URL. Path should contain '/issues/{issue_id}'",
+    if (params.eventId) {
+      const orgSlug = params.organizationSlug;
+      if (!orgSlug) {
+        throw new UserInputError(
+          "`organizationSlug` is required when providing `eventId`",
         );
       }
-      organizationSlug = resolved.organizationSlug;
-      issueId = resolved.issueId;
-    } else if (!issueId) {
-      throw new Error("Either issueId or issueUrl must be provided");
+
+      setTag("organization.slug", orgSlug);
+      const [issue] = await apiService.listIssues({
+        organizationSlug: orgSlug,
+        query: params.eventId,
+      });
+      if (!issue) {
+        return `# Event Not Found\n\nNo issue found for Event ID: ${params.eventId}`;
+      }
+      const event = await apiService.getEventForIssue({
+        organizationSlug: orgSlug,
+        issueId: issue.shortId,
+        eventId: params.eventId,
+      });
+      return formatIssueOutput({
+        organizationSlug: orgSlug,
+        issue,
+        event,
+        apiService,
+      });
     }
 
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
+    // Validate that we have the minimum required parameters
+    if (!params.issueUrl && !params.issueId) {
+      throw new UserInputError(
+        "Either `issueId` or `issueUrl` must be provided",
+      );
     }
 
-    if (!organizationSlug) {
-      throw new Error("Organization slug is required");
+    if (!params.issueUrl && !params.organizationSlug) {
+      throw new UserInputError(
+        "`organizationSlug` is required when providing `issueId`",
+      );
     }
+
+    const { organizationSlug: orgSlug, issueId: parsedIssueId } =
+      parseIssueParams({
+        organizationSlug: params.organizationSlug,
+        issueId: params.issueId,
+        issueUrl: params.issueUrl,
+      });
+    setTag("organization.slug", orgSlug);
 
     const [issue, event] = await Promise.all([
       apiService.getIssue({
-        organizationSlug,
-        issueId: issueId!,
+        organizationSlug: orgSlug,
+        issueId: parsedIssueId!,
       }),
       apiService.getLatestEventForIssue({
-        organizationSlug,
-        issueId: issueId!,
+        organizationSlug: orgSlug,
+        issueId: parsedIssueId!,
       }),
     ]);
 
-    let output = `# Issue ${issue.shortId} in **${organizationSlug}**\n\n`;
-    output += `**Description**: ${issue.title}\n`;
-    output += `**Culprit**: ${issue.culprit}\n`;
-    output += `**First Seen**: ${new Date(issue.firstSeen).toISOString()}\n`;
-    output += `**Last Seen**: ${new Date(issue.lastSeen).toISOString()}\n`;
-    output += `**URL**: ${apiService.getIssueUrl(
-      organizationSlug,
-      issue.shortId,
-    )}\n`;
+    return formatIssueOutput({
+      organizationSlug: orgSlug,
+      issue,
+      event,
+      apiService,
+    });
+  },
+  update_issue: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
 
-    output += "\n";
-
-    output += "## Event Specifics\n\n";
-    if (event.type === "error") {
-      output += `**Occurred At**: ${new Date(event.dateCreated).toISOString()}\n`;
+    // Validate that we have the minimum required parameters
+    if (!params.issueUrl && !params.issueId) {
+      throw new UserInputError(
+        "Either `issueId` or `issueUrl` must be provided",
+      );
     }
 
-    if (event.message) {
-      output += `**Message**:\n${event.message}\n`;
+    if (!params.issueUrl && !params.organizationSlug) {
+      throw new UserInputError(
+        "`organizationSlug` is required when providing `issueId`",
+      );
     }
 
-    output += formatEventOutput(event);
+    // Validate that at least one update parameter is provided
+    if (!params.status && !params.assignedTo) {
+      throw new UserInputError(
+        "At least one of `status` or `assignedTo` must be provided to update the issue",
+      );
+    }
 
-    output += "# Using this information\n\n";
-    output += `- You can reference the IssueID in commit messages (e.g. \`Fixes ${issueId}\`) to automatically close the issue when the commit is merged.\n`;
-    output +=
-      "- The stacktrace includes both first-party application code as well as third-party code, its important to triage to first-party code.\n";
+    const { organizationSlug: orgSlug, issueId: parsedIssueId } =
+      parseIssueParams({
+        organizationSlug: params.organizationSlug,
+        issueId: params.issueId,
+        issueUrl: params.issueUrl,
+      });
+
+    setTag("organization.slug", orgSlug);
+
+    // Get current issue details first
+    const currentIssue = await apiService.getIssue({
+      organizationSlug: orgSlug,
+      issueId: parsedIssueId!,
+    });
+
+    // Update the issue
+    const updatedIssue = await apiService.updateIssue({
+      organizationSlug: orgSlug,
+      issueId: parsedIssueId!,
+      status: params.status,
+      assignedTo: params.assignedTo,
+    });
+
+    let output = `# Issue ${updatedIssue.shortId} Updated in **${orgSlug}**\n\n`;
+    output += `**Issue**: ${updatedIssue.title}\n`;
+    output += `**URL**: ${apiService.getIssueUrl(orgSlug, updatedIssue.shortId)}\n\n`;
+
+    // Show what changed
+    output += "## Changes Made\n\n";
+
+    if (params.status && currentIssue.status !== params.status) {
+      output += `**Status**: ${currentIssue.status} → **${params.status}**\n`;
+    }
+
+    if (params.assignedTo) {
+      const oldAssignee = formatAssignedTo(currentIssue.assignedTo ?? null);
+      const newAssignee =
+        params.assignedTo === "me" ? "You" : params.assignedTo;
+      output += `**Assigned To**: ${oldAssignee} → **${newAssignee}**\n`;
+    }
+
+    output += "\n## Current Status\n\n";
+    output += `**Status**: ${updatedIssue.status}\n`;
+    const currentAssignee = formatAssignedTo(updatedIssue.assignedTo ?? null);
+    output += `**Assigned To**: ${currentAssignee}\n`;
+
+    output += "\n# Using this information\n\n";
+    output += `- The issue has been successfully updated in Sentry\n`;
+    output += `- You can view the issue details using: \`get_issue_details(organizationSlug="${orgSlug}", issueId="${updatedIssue.shortId}")\`\n`;
+
+    if (params.status === "resolved") {
+      output += `- The issue is now marked as resolved and will no longer generate alerts\n`;
+    } else if (params.status === "ignored") {
+      output += `- The issue is now ignored and will not generate alerts until it escalates\n`;
+    }
 
     return output;
   },
+  find_errors: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const organizationSlug = params.organizationSlug;
 
-  search_errors: async (
-    context,
-    { filename, transaction, query, sortBy, organizationSlug, projectSlug },
-  ) => {
-    const apiService = apiServiceFromContext(context);
-
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
-    }
-
-    if (!organizationSlug) {
-      throw new Error("Organization slug is required");
-    }
+    setTag("organization.slug", organizationSlug);
+    if (params.projectSlug) setTag("project.slug", params.projectSlug);
 
     const eventList = await apiService.searchErrors({
       organizationSlug,
-      projectSlug,
-      filename,
-      query,
-      transaction,
-      sortBy,
+      projectSlug: params.projectSlug,
+      filename: params.filename,
+      query: params.query,
+      transaction: params.transaction,
+      sortBy: params.sortBy as "last_seen" | "count" | undefined,
     });
-
-    let output = `# Errors in **${organizationSlug}${projectSlug ? `/${projectSlug}` : ""}**\n\n`;
-    if (query) output += `These errors match the query \`${query}\`\n`;
-    if (filename)
-      output += `These errors are limited to the file suffix \`${filename}\`\n`;
+    let output = `# Errors in **${organizationSlug}${params.projectSlug ? `/${params.projectSlug}` : ""}**\n\n`;
+    if (params.query)
+      output += `These errors match the query \`${params.query}\`\n`;
+    if (params.filename)
+      output += `These errors are limited to the file suffix \`${params.filename}\`\n`;
     output += "\n";
-
     if (eventList.length === 0) {
       output += `No results found\n\n`;
       output += `We searched within the ${organizationSlug} organization.\n\n`;
       return output;
     }
-
     for (const eventSummary of eventList) {
       output += `## ${eventSummary.issue}\n\n`;
       output += `**Description**: ${eventSummary.title}\n`;
       output += `**Issue ID**: ${eventSummary.issue}\n`;
-      output += `**URL**: ${apiService.getIssueUrl(
-        organizationSlug,
-        eventSummary.issue,
-      )}\n`;
+      output += `**URL**: ${apiService.getIssueUrl(organizationSlug, eventSummary.issue)}\n`;
       output += `**Project**: ${eventSummary.project}\n`;
       output += `**Last Seen**: ${eventSummary["last_seen()"]}\n`;
       output += `**Occurrences**: ${eventSummary["count()"]}\n\n`;
     }
-
     output += "# Using this information\n\n";
     output += `- You can reference the Issue ID in commit messages (e.g. \`Fixes <issueID>\`) to automatically close the issue when the commit is merged.\n`;
     output += `- You can get more details about an error by using the tool: \`get_issue_details(organizationSlug="${organizationSlug}", issueId=<issueID>)\`\n`;
-
     return output;
   },
+  find_transactions: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const organizationSlug = params.organizationSlug;
 
-  search_transactions: async (
-    context,
-    { transaction, query, sortBy, organizationSlug, projectSlug },
-  ) => {
-    const apiService = apiServiceFromContext(context);
-
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
-    }
-
-    if (!organizationSlug) {
-      throw new Error("Organization slug is required");
-    }
+    setTag("organization.slug", organizationSlug);
+    if (params.projectSlug) setTag("project.slug", params.projectSlug);
 
     const eventList = await apiService.searchSpans({
       organizationSlug,
-      projectSlug,
-      transaction,
-      query,
-      sortBy,
+      projectSlug: params.projectSlug,
+      transaction: params.transaction,
+      query: params.query,
+      sortBy: params.sortBy as "timestamp" | "duration" | undefined,
     });
-
-    let output = `# Transactions in **${organizationSlug}${projectSlug ? `/${projectSlug}` : ""}**\n\n`;
-    if (query) output += `These spans match the query \`${query}\`\n`;
-    if (transaction)
-      output += `These spans are limited to the transaction \`${transaction}\`\n`;
+    let output = `# Transactions in **${organizationSlug}${params.projectSlug ? `/${params.projectSlug}` : ""}**\n\n`;
+    if (params.query)
+      output += `These spans match the query \`${params.query}\`\n`;
+    if (params.transaction)
+      output += `These spans are limited to the transaction \`${params.transaction}\`\n`;
     output += "\n";
-
     if (eventList.length === 0) {
       output += `No results found\n\n`;
       output += `We searched within the ${organizationSlug} organization.\n\n`;
       return output;
     }
-
     for (const eventSummary of eventList) {
-      output += `## ${eventSummary.transaction}\n\n`;
+      output += `## \`${eventSummary.transaction}\`\n\n`;
       output += `**Span ID**: ${eventSummary.id}\n`;
       output += `**Trace ID**: ${eventSummary.trace}\n`;
       output += `**Span Operation**: ${eventSummary["span.op"]}\n`;
@@ -481,63 +537,44 @@ export const TOOL_HANDLERS = {
       output += `**Duration**: ${eventSummary["span.duration"]}\n`;
       output += `**Timestamp**: ${eventSummary.timestamp}\n`;
       output += `**Project**: ${eventSummary.project}\n`;
-      output += `**URL**: ${apiService.getTraceUrl(
-        organizationSlug,
-        eventSummary.trace,
-      )}\n\n`;
+      output += `**URL**: ${apiService.getTraceUrl(organizationSlug, eventSummary.trace)}\n\n`;
     }
-
-    // output += "# Using this information\n\n";
-    // output += `- You can get more details about this error by using the "get_trace_details" tool.\n`;
-
     return output;
   },
+  create_team: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const organizationSlug = params.organizationSlug;
 
-  create_team: async (context, { organizationSlug, name }) => {
-    const apiService = apiServiceFromContext(context);
-
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
-    }
-
-    if (!organizationSlug) {
-      throw new Error("Organization slug is required");
-    }
+    setTag("organization.slug", organizationSlug);
 
     const team = await apiService.createTeam({
       organizationSlug,
-      name,
+      name: params.name,
     });
-
     let output = `# New Team in **${organizationSlug}**\n\n`;
     output += `**ID**: ${team.id}\n`;
     output += `**Slug**: ${team.slug}\n`;
     output += `**Name**: ${team.name}\n`;
-
     output += "# Using this information\n\n";
     output += `- You should always inform the user of the Team Slug value.\n`;
     return output;
   },
+  create_project: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const organizationSlug = params.organizationSlug;
 
-  create_project: async (
-    context,
-    { organizationSlug, teamSlug, name, platform },
-  ) => {
-    const apiService = apiServiceFromContext(context);
-
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
-    }
-
-    if (!organizationSlug) {
-      throw new Error("Organization slug is required");
-    }
+    setTag("organization.slug", organizationSlug);
+    setTag("team.slug", params.teamSlug);
 
     const project = await apiService.createProject({
       organizationSlug,
-      teamSlug,
-      name,
-      platform,
+      teamSlug: params.teamSlug,
+      name: params.name,
+      platform: params.platform,
     });
     let clientKey: ClientKey | null = null;
     try {
@@ -549,177 +586,211 @@ export const TOOL_HANDLERS = {
     } catch (err) {
       logError(err);
     }
-
     let output = `# New Project in **${organizationSlug}**\n\n`;
     output += `**ID**: ${project.id}\n`;
     output += `**Slug**: ${project.slug}\n`;
     output += `**Name**: ${project.name}\n`;
-
     if (clientKey) {
       output += `**SENTRY_DSN**: ${clientKey?.dsn.public}\n\n`;
     } else {
       output += "**SENTRY_DSN**: There was an error fetching this value.\n\n";
     }
-
     output += "# Using this information\n\n";
     output += `- You can reference the **SENTRY_DSN** value to initialize Sentry's SDKs.\n`;
     output += `- You should always inform the user of the **SENTRY_DSN** and Project Slug values.\n`;
-
     return output;
   },
+  update_project: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const organizationSlug = params.organizationSlug;
 
-  create_dsn: async (context, { organizationSlug, projectSlug, name }) => {
-    const apiService = apiServiceFromContext(context);
+    setTag("organization.slug", organizationSlug);
+    setTag("project.slug", params.projectSlug);
 
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
+    // Handle team assignment separately if provided
+    if (params.teamSlug) {
+      setTag("team.slug", params.teamSlug);
+      try {
+        await apiService.addTeamToProject({
+          organizationSlug,
+          projectSlug: params.projectSlug,
+          teamSlug: params.teamSlug,
+        });
+      } catch (err) {
+        logError(err);
+        throw new Error(
+          `Failed to assign team ${params.teamSlug} to project ${params.projectSlug}: ${err instanceof Error ? err.message : "Unknown error"}`,
+        );
+      }
     }
 
-    if (!organizationSlug) {
-      throw new Error("Organization slug is required");
+    // Update project settings if any are provided
+    const hasProjectUpdates = params.name || params.slug || params.platform;
+
+    let project: Project | undefined;
+    if (hasProjectUpdates) {
+      try {
+        project = await apiService.updateProject({
+          organizationSlug,
+          projectSlug: params.projectSlug,
+          name: params.name,
+          slug: params.slug,
+          platform: params.platform,
+        });
+      } catch (err) {
+        logError(err);
+        throw new Error(
+          `Failed to update project ${params.projectSlug}: ${err instanceof Error ? err.message : "Unknown error"}`,
+        );
+      }
+    } else {
+      // If only team assignment, fetch current project data for display
+      const projects = await apiService.listProjects(organizationSlug);
+      project = projects.find((p) => p.slug === params.projectSlug);
+      if (!project) {
+        throw new UserInputError(`Project ${params.projectSlug} not found`);
+      }
     }
+
+    let output = `# Updated Project in **${organizationSlug}**\n\n`;
+    output += `**ID**: ${project.id}\n`;
+    output += `**Slug**: ${project.slug}\n`;
+    output += `**Name**: ${project.name}\n`;
+    if (project.platform) {
+      output += `**Platform**: ${project.platform}\n`;
+    }
+
+    // Display what was updated
+    const updates: string[] = [];
+    if (params.name) updates.push(`name to "${params.name}"`);
+    if (params.slug) updates.push(`slug to "${params.slug}"`);
+    if (params.platform) updates.push(`platform to "${params.platform}"`);
+    if (params.teamSlug)
+      updates.push(`team assignment to "${params.teamSlug}"`);
+
+    if (updates.length > 0) {
+      output += `\n## Updates Applied\n`;
+      output += updates.map((update) => `- Updated ${update}`).join("\n");
+      output += `\n`;
+    }
+
+    output += "\n# Using this information\n\n";
+    output += `- The project is now accessible at slug: \`${project.slug}\`\n`;
+    if (params.teamSlug) {
+      output += `- The project is now assigned to the \`${params.teamSlug}\` team\n`;
+    }
+    return output;
+  },
+  create_dsn: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const organizationSlug = params.organizationSlug;
+
+    setTag("organization.slug", organizationSlug);
+    setTag("project.slug", params.projectSlug);
 
     const clientKey = await apiService.createClientKey({
       organizationSlug,
-      projectSlug,
-      name,
+      projectSlug: params.projectSlug,
+      name: params.name,
     });
-
-    let output = `# New DSN in **${organizationSlug}/${projectSlug}**\n\n`;
+    let output = `# New DSN in **${organizationSlug}/${params.projectSlug}**\n\n`;
     output += `**DSN**: ${clientKey.dsn.public}\n`;
     output += `**Name**: ${clientKey.name}\n\n`;
-
     output += "# Using this information\n\n";
     output +=
       "- The `SENTRY_DSN` value is a URL that you can use to initialize Sentry's SDKs.\n";
-
     return output;
   },
+  find_dsns: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const organizationSlug = params.organizationSlug;
 
-  list_dsns: async (context, { organizationSlug, projectSlug }) => {
-    const apiService = apiServiceFromContext(context);
-
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
-    }
-
-    if (!organizationSlug) {
-      throw new Error("Organization slug is required");
-    }
+    setTag("organization.slug", organizationSlug);
+    setTag("project.slug", params.projectSlug);
 
     const clientKeys = await apiService.listClientKeys({
       organizationSlug,
-      projectSlug,
+      projectSlug: params.projectSlug,
     });
-
-    let output = `# DSNs in **${organizationSlug}/${projectSlug}**\n\n`;
-
+    let output = `# DSNs in **${organizationSlug}/${params.projectSlug}**\n\n`;
     if (clientKeys.length === 0) {
       output +=
         "No DSNs were found.\n\nYou can create new one using the `create_dsn` tool.";
       return output;
     }
-
     for (const clientKey of clientKeys) {
       output += `## ${clientKey.name}\n`;
       output += `**ID**: ${clientKey.id}\n`;
       output += `**DSN**: ${clientKey.dsn.public}\n\n`;
     }
-
     output += "# Using this information\n\n";
     output +=
       "- The `SENTRY_DSN` value is a URL that you can use to initialize Sentry's SDKs.\n";
     return output;
   },
-  begin_autofix: async (context, { organizationSlug, issueId, issueUrl }) => {
-    const apiService = apiServiceFromContext(context);
+  begin_seer_issue_fix: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
+    });
+    const { organizationSlug: orgSlug, issueId: parsedIssueId } =
+      parseIssueParams({
+        organizationSlug: params.organizationSlug,
+        issueId: params.issueId,
+        issueUrl: params.issueUrl,
+      });
 
-    if (issueUrl) {
-      const resolved = extractIssueId(issueUrl);
-      if (!resolved) {
-        throw new Error(
-          "Invalid Sentry issue URL. Path should contain '/issues/{issue_id}'",
-        );
-      }
-      organizationSlug = resolved.organizationSlug;
-      issueId = resolved.issueId;
-    } else if (!issueId) {
-      throw new Error("Either issueId or issueUrl must be provided");
-    }
-
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
-    }
-
-    if (!organizationSlug) {
-      throw new Error("Organization slug is required");
-    }
+    setTag("organization.slug", orgSlug);
 
     const data = await apiService.startAutofix({
-      organizationSlug,
-      issueId,
+      organizationSlug: orgSlug,
+      issueId: parsedIssueId,
     });
-
     return [
-      `# Autofix Started for Issue ${issueId}`,
+      `# Issue Fix Started for Issue ${parsedIssueId}`,
       "",
       `**Run ID:**: ${data.run_id}`,
       "",
-      "This operation may take some time, so you should call `get_autofix_status()` to check the status of the analysis, and repeat the process until its finished.",
+      "This operation may take some time, so you should call `get_seer_issue_fix_status()` to check the status of the analysis, and repeat the process until its finished.",
       "",
       "You should also inform the user that the operation may take some time, and give them updates whenever you check the status of the operation..",
       "",
       "```",
-      issueUrl
-        ? `get_autofix_status(issueUrl="${issueUrl}")`
-        : `get_autofix_status(organizationSlug="${organizationSlug}", issueId="${issueId}")`,
+      params.issueUrl
+        ? `get_seer_issue_fix_status(issueUrl="${params.issueUrl}")`
+        : `get_seer_issue_fix_status(organizationSlug="${orgSlug}", issueId="${parsedIssueId}")`,
       "```",
     ].join("\n");
   },
-  get_autofix_status: async (
-    context,
-    { organizationSlug, issueId, issueUrl },
-  ) => {
-    const apiService = apiServiceFromContext(context);
-
-    if (issueUrl) {
-      const resolved = extractIssueId(issueUrl);
-      if (!resolved) {
-        throw new Error(
-          "Invalid Sentry issue URL. Path should contain '/issues/{issue_id}'",
-        );
-      }
-      organizationSlug = resolved.organizationSlug;
-      issueId = resolved.issueId;
-    } else if (!issueId) {
-      throw new Error("Either issueId or issueUrl must be provided");
-    }
-
-    if (!organizationSlug && context.organizationSlug) {
-      organizationSlug = context.organizationSlug;
-    }
-
-    if (!organizationSlug) {
-      throw new Error("Organization slug is required");
-    }
-
-    const { autofix } = await apiService.getAutofixState({
-      organizationSlug,
-      issueId,
+  get_seer_issue_fix_status: async (context, params) => {
+    const apiService = apiServiceFromContext(context, {
+      regionUrl: params.regionUrl,
     });
-
-    let output = `# Autofix Status for Issue ${issueId}\n\n`;
-
+    const { organizationSlug: orgSlug, issueId: parsedIssueId } =
+      parseIssueParams({
+        organizationSlug: params.organizationSlug,
+        issueId: params.issueId,
+        issueUrl: params.issueUrl,
+      });
+    setTag("organization.slug", orgSlug);
+    const { autofix } = await apiService.getAutofixState({
+      organizationSlug: orgSlug,
+      issueId: parsedIssueId!,
+    });
+    let output = `# Issue Fix Status for Issue ${parsedIssueId}\n\n`;
     if (!autofix) {
-      output += `No autofix run found for ${issueId}.\n\nYou can initiate a new autofix run using the \`begin_autofix\` tool.`;
+      output += `No issue fix process found for ${parsedIssueId}.\n\nYou can initiate a new issue fix execution using the \`begin_seer_issue_fix\` tool.`;
       return output;
     }
-
     for (const step of autofix.steps) {
       output += getOutputForAutofixStep(step);
       output += "\n";
     }
-
     return output;
   },
 } satisfies ToolHandlers;
@@ -782,4 +853,23 @@ function getOutputForAutofixStep(step: z.infer<typeof AutofixRunStepSchema>) {
   }
 
   return output;
+}
+
+/**
+ * Helper function to format assignedTo field for display
+ */
+function formatAssignedTo(assignedTo: AssignedTo): string {
+  if (!assignedTo) {
+    return "Unassigned";
+  }
+
+  if (typeof assignedTo === "string") {
+    return assignedTo;
+  }
+
+  if (typeof assignedTo === "object" && assignedTo.name) {
+    return assignedTo.name;
+  }
+
+  return "Unknown";
 }

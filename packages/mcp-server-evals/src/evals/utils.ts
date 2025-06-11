@@ -8,13 +8,35 @@ import {
 import { Experimental_StdioMCPTransport } from "ai/mcp-stdio";
 import { z } from "zod";
 
+/**
+ * IMPORTANT: Keep evaluation tests minimal!
+ *
+ * Each eval test takes 30+ seconds to run and costs API credits.
+ * Only create evaluation tests for the core use cases of each tool:
+ * - Primary functionality (e.g., resolving an issue)
+ * - Alternative input methods (e.g., using issue URL vs org+issueId)
+ * - One complex workflow example if applicable
+ *
+ * Avoid testing edge cases, error conditions, or minor variations in evals.
+ * Use unit tests (tools.test.ts) for comprehensive coverage instead.
+ */
+
+const SYSTEM_PROMPT = `You are an assistant responsible for evaluating the results of calling various tools. 
+
+You a general purpose LLM-based Agent. Your purpose is to answer the user's query using the tools provided.
+
+- You should ONLY use the tools available to answer the user's query.
+- Use as few tool calls as possible to get to the answer.
+- Using multiple tool calls to get to the answer is allowed when needed.
+`;
+
 export const FIXTURES = {
   organizationSlug: "sentry-mcp-evals",
   teamSlug: "the-goats",
   projectSlug: "cloudflare-mcp",
   issueId: "CLOUDFLARE-MCP-41",
   issueUrl: "https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-41/",
-  autofixIssueUrl: "https://sentry-mcp-evals.sentry.io/issues/PEATED-A8/",
+  testIssueUrl: "https://sentry-mcp-evals.sentry.io/issues/PEATED-A8/",
   dsn: "https://d20df0a1ab5031c7f3c7edca9c02814d@o4509106732793856.ingest.us.sentry.io/4509109104082945",
 };
 
@@ -26,7 +48,7 @@ export function TaskRunner(model: LanguageModel = defaultModel) {
       command: "npm",
       args: ["run", "start"],
       env: {
-        SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN!,
+        SENTRY_ACCESS_TOKEN: process.env.SENTRY_ACCESS_TOKEN!,
       },
     });
     const mcpClient = await experimental_createMCPClient({
@@ -39,8 +61,7 @@ export function TaskRunner(model: LanguageModel = defaultModel) {
       const result = streamText({
         model,
         tools,
-        system:
-          "You are an assistant responsible for evaluating the results of calling various tools. Given the user's query, use the tools available to you to answer the question.",
+        system: SYSTEM_PROMPT,
         prompt: input,
         maxRetries: 1,
         maxSteps: 10,

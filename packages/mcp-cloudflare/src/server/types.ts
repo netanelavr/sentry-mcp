@@ -1,5 +1,5 @@
 import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
-import type SentryMCP from "./lib/mcp-transport";
+import type { WorkerVersionMetadata } from "@cloudflare/workers-types";
 import type { ServerContext } from "@sentry/mcp-server/types";
 
 export type WorkerProps = ServerContext & {
@@ -12,11 +12,14 @@ export interface Env {
   NODE_ENV: string;
   ASSETS: Fetcher;
   OAUTH_KV: KVNamespace;
+  COOKIE_SECRET: string;
   SENTRY_CLIENT_ID: string;
   SENTRY_CLIENT_SECRET: string;
+  SENTRY_ENVIRONMENT?: string;
   SENTRY_DSN?: string;
   SENTRY_HOST?: string;
-  MCP_OBJECT: DurableObjectNamespace<SentryMCP>;
+  MCP_OBJECT: DurableObjectNamespace;
   OAUTH_PROVIDER: OAuthHelpers;
   AI: Ai;
+  CF_VERSION_METADATA: WorkerVersionMetadata;
 }

@@ -7,7 +7,12 @@
   "name": "sentry-mcp",
   "main": "./src/server/index.ts",
   "compatibility_date": "2025-03-21",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat",
+    "nodejs_compat_populate_process_env"
+  ],
+  // we ask people to configure environment variables in prod
+  "keep_vars": true,
   "migrations": [
     {
       "new_sqlite_classes": ["SentryMCP"],
@@ -19,13 +24,10 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   },
-  "vars": {
-    "SENTRY_DSN": "https://7f7bbaad9504b727cdf8edc378c6d1de@o1.ingest.us.sentry.io/4509062593708032",
-    "VITE_SENTRY_DSN": "https://7f7bbaad9504b727cdf8edc378c6d1de@o1.ingest.us.sentry.io/4509062593708032",
-    "SENTRY_CLIENT_ID": "32d744a577ea363284b996867923fa4eb0bfdfcfe6b46399f078f753b7bb84f1",
-    "SENTRY_HOST": "sentry.io",
-    "SENTRY_ENVIRONMENT": "cloudflare"
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA"
   },
+  "vars": {},
   "durable_objects": {
     "bindings": [
       {
@@ -34,6 +36,7 @@
       }
     ]
   },
+
   "kv_namespaces": [
     {
       "binding": "OAUTH_KV",

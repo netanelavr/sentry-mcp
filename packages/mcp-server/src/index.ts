@@ -1,12 +1,26 @@
 #!/usr/bin/env node
 
+/**
+ * Main CLI entry point for the Sentry MCP server.
+ *
+ * Handles command-line argument parsing, environment configuration, Sentry
+ * initialization, and starts the MCP server with stdio transport. Requires
+ * a Sentry access token and optionally accepts host and DSN configuration.
+ *
+ * @example CLI Usage
+ * ```bash
+ * npx @sentry/mcp-server --access-token=TOKEN --host=sentry.io
+ * ```
+ */
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { startStdio } from "./transports/stdio";
-import { wrapMcpServerWithSentry } from "@sentry/core";
 import * as Sentry from "@sentry/node";
 import { LIB_VERSION } from "./version";
 
-let accessToken: string | undefined = process.env.SENTRY_AUTH_TOKEN;
+// SENTRY_AUTH_TOKEN is deprecated, but we support it for backwards compatibility
+let accessToken: string | undefined =
+  process.env.SENTRY_ACCESS_TOKEN ?? process.env.SENTRY_AUTH_TOKEN;
 let host: string | undefined = process.env.SENTRY_HOST;
 let sentryDsn: string | undefined =
   process.env.SENTRY_DSN || process.env.DEFAULT_SENTRY_DSN;
@@ -37,7 +51,7 @@ for (const arg of process.argv.slice(2)) {
 
 if (!accessToken) {
   console.error(
-    "Error: No access token was provided. Pass one with `--access-token` or via `SENTRY_AUTH_TOKEN`.",
+    "Error: No access token was provided. Pass one with `--access-token` or via `SENTRY_ACCESS_TOKEN`.",
   );
   console.error(getUsage());
   process.exit(1);
@@ -46,6 +60,19 @@ if (!accessToken) {
 Sentry.init({
   dsn: sentryDsn,
   sendDefaultPii: true,
+  tracesSampleRate: 1,
+  initialScope: {
+    tags: {
+      "mcp.server_version": LIB_VERSION,
+      "mcp.transport": "stdio",
+      "sentry.host": host,
+    },
+  },
+  release: process.env.SENTRY_RELEASE,
+  integrations: [
+    Sentry.consoleLoggingIntegration(),
+    Sentry.zodErrorsIntegration(),
+  ],
   environment:
     process.env.SENTRY_ENVIRONMENT ??
     (process.env.NODE_ENV !== "production" ? "development" : "production"),
@@ -56,7 +83,7 @@ const server = new McpServer({
   version: LIB_VERSION,
 });
 
-const instrumentedServer = wrapMcpServerWithSentry(server);
+const instrumentedServer = Sentry.wrapMcpServerWithSentry(server);
 
 const SENTRY_TIMEOUT = 5000; // 5 seconds
 

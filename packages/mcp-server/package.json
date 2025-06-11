@@ -1,6 +1,6 @@
 {
   "name": "@sentry/mcp-server",
-  "version": "0.4.0",
+  "version": "0.11.0",
   "type": "module",
   "packageManager": "pnpm@10.3.0",
   "engines": {
@@ -79,12 +79,12 @@
   "devDependencies": {
     "@sentry/mcp-server-mocks": "workspace:*",
     "@sentry/mcp-server-tsconfig": "workspace:*",
-    "msw": "^2.7.5"
+    "msw": "^2.8.7"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.10.2",
-    "@sentry/core": "^9.14.0",
-    "@sentry/node": "^9.14.0",
-    "zod": "^3.24.3"
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@sentry/core": "^9.24.0",
+    "@sentry/node": "^9.24.0",
+    "zod": "^3.25.48"
   }
 }

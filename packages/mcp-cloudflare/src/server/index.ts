@@ -1,19 +1,22 @@
+import * as Sentry from "@sentry/cloudflare";
 import OAuthProvider from "@cloudflare/workers-oauth-provider";
 import SentryMCP from "./lib/mcp-transport";
 import app from "./app";
 import { SCOPES } from "../constants";
 import type { Env } from "./types";
-import * as Sentry from "@sentry/cloudflare";
+import getSentryConfig from "./sentry.config";
 
 // required for Durable Objects
 export { SentryMCP };
 
 const oAuthProvider = new OAuthProvider({
-  apiRoute: "/sse",
-  // @ts-ignore
-  apiHandler: SentryMCP.mount("/sse"),
+  apiHandlers: {
+    "/sse": SentryMCP.serveSSE("/sse"),
+    "/mcp": SentryMCP.serve("/mcp"),
+  },
   // @ts-ignore
   defaultHandler: app,
+  // must match the routes registered in `app.ts`
   authorizeEndpoint: "/oauth/authorize",
   tokenEndpoint: "/oauth/token",
   clientRegistrationEndpoint: "/oauth/register",
@@ -21,13 +24,6 @@ const oAuthProvider = new OAuthProvider({
 });
 
 export default Sentry.withSentry(
-  (env) => ({
-    dsn: env.SENTRY_DSN,
-    tracesSampleRate: 1,
-    sendDefaultPii: true,
-    environment:
-      env.SENTRY_ENVIRONMENT ??
-      (process.env.NODE_ENV !== "production" ? "development" : "production"),
-  }),
+  getSentryConfig,
   oAuthProvider,
 ) satisfies ExportedHandler<Env>;

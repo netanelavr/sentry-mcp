@@ -1,26 +1,62 @@
 import { describe, it, expect } from "vitest";
 import { TOOL_HANDLERS } from "./tools";
 
-describe("list_organizations", () => {
+describe("whoami", () => {
   it("serializes", async () => {
-    const tool = TOOL_HANDLERS.list_organizations;
-    const result = await tool({
-      accessToken: "access-token",
-      userId: "1",
-      organizationSlug: null,
-    });
+    const tool = TOOL_HANDLERS.whoami;
+    const result = await tool(
+      {
+        accessToken: "access-token",
+        userId: "1",
+        organizationSlug: null,
+      },
+      {
+        regionUrl: undefined,
+      },
+    );
+    expect(result).toMatchInlineSnapshot(
+      `
+      "You are authenticated as John Doe (john.doe@example.com).
+
+      Your Sentry User ID is 1."
+    `,
+    );
+  });
+});
+
+describe("find_organizations", () => {
+  it("serializes", async () => {
+    const tool = TOOL_HANDLERS.find_organizations;
+    const result = await tool(
+      {
+        accessToken: "access-token",
+        userId: "1",
+        organizationSlug: null,
+      },
+      {
+        regionUrl: undefined,
+      },
+    );
     expect(result).toMatchInlineSnapshot(`
       "# Organizations
 
-      - sentry-mcp-evals
+      ## **sentry-mcp-evals**
+
+      **Web URL:** https://sentry.io/sentry-mcp-evals
+      **Region URL:** https://us.sentry.io
+
+      # Using this information
+
+      - The organization's name is the identifier for the organization, and is used in many tools for \`organizationSlug\`.
+      - If a tool supports passing in the \`regionUrl\`, you MUST pass in the correct value there.
       "
     `);
   });
 });
 
-describe("list_teams", () => {
+describe("find_teams", () => {
   it("serializes", async () => {
-    const tool = TOOL_HANDLERS.list_teams;
+    const tool = TOOL_HANDLERS.find_teams;
     const result = await tool(
       {
         accessToken: "access-token",
@@ -29,6 +65,7 @@ describe("list_teams", () => {
       },
       {
         organizationSlug: "sentry-mcp-evals",
+        regionUrl: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
@@ -40,9 +77,9 @@ describe("list_teams", () => {
   });
 });
 
-describe("list_projects", () => {
+describe("find_projects", () => {
   it("serializes", async () => {
-    const tool = TOOL_HANDLERS.list_projects;
+    const tool = TOOL_HANDLERS.find_projects;
     const result = await tool(
       {
         accessToken: "access-token",
@@ -51,20 +88,21 @@ describe("list_projects", () => {
       },
       {
         organizationSlug: "sentry-mcp-evals",
+        regionUrl: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
       "# Projects in **sentry-mcp-evals**
 
-      - cloudflare-mcp
+      - **cloudflare-mcp**
       "
     `);
   });
 });
 
-describe("list_issues", () => {
-  it("serializes", async () => {
-    const tool = TOOL_HANDLERS.list_issues;
+describe("find_issues", () => {
+  it("serializes with project", async () => {
+    const tool = TOOL_HANDLERS.find_issues;
     const result = await tool(
       {
         accessToken: "access-token",
@@ -76,6 +114,7 @@ describe("list_issues", () => {
         projectSlug: "cloudflare-mcp",
         query: undefined,
         sortBy: "last_seen",
+        regionUrl: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
@@ -104,11 +143,9 @@ describe("list_issues", () => {
       "
     `);
   });
-});
 
-describe("list_releases", () => {
-  it("works without project", async () => {
-    const tool = TOOL_HANDLERS.list_releases;
+  it("serializes without project", async () => {
+    const tool = TOOL_HANDLERS.find_issues;
     const result = await tool(
       {
         accessToken: "access-token",
@@ -118,6 +155,53 @@ describe("list_releases", () => {
       {
         organizationSlug: "sentry-mcp-evals",
         projectSlug: undefined,
+        query: undefined,
+        sortBy: "last_seen",
+        regionUrl: undefined,
+      },
+    );
+    expect(result).toMatchInlineSnapshot(`
+      "# Issues in **sentry-mcp-evals**
+
+      ## CLOUDFLARE-MCP-41
+
+      **Description**: Error: Tool list_organizations is already registered
+      **Culprit**: Object.fetch(index)
+      **First Seen**: 2025-04-03T22:51:19.403Z
+      **Last Seen**: 2025-04-12T11:34:11.000Z
+      **URL**: https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-41
+
+      ## CLOUDFLARE-MCP-42
+
+      **Description**: Error: Tool list_issues is already registered
+      **Culprit**: Object.fetch(index)
+      **First Seen**: 2025-04-11T22:51:19.403Z
+      **Last Seen**: 2025-04-12T11:34:11.000Z
+      **URL**: https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-42
+
+      # Using this information
+
+      - You can reference the Issue ID in commit messages (e.g. \`Fixes <issueID>\`) to automatically close the issue when the commit is merged.
+      - You can get more details about a specific issue by using the tool: \`get_issue_details(organizationSlug="sentry-mcp-evals", issueId=<issueID>)\`
+      "
+    `);
+  });
+});
+
+describe("find_releases", () => {
+  it("works without project", async () => {
+    const tool = TOOL_HANDLERS.find_releases;
+    const result = await tool(
+      {
+        accessToken: "access-token",
+        userId: "1",
+        organizationSlug: null,
+      },
+      {
+        organizationSlug: "sentry-mcp-evals",
+        projectSlug: undefined,
+        regionUrl: undefined,
+        query: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
@@ -134,12 +218,12 @@ describe("list_releases", () => {
       # Using this information
 
       - You can reference the Release version in commit messages or documentation.
-      - You can search for issues in a specific release using the \`search_errors()\` tool with the query \`release:8ce89484-0fec-4913-a2cd-e8e2d41dee36\`.
+      - You can search for issues in a specific release using the \`find_errors()\` tool with the query \`release:8ce89484-0fec-4913-a2cd-e8e2d41dee36\`.
       "
     `);
   });
   it("works with project", async () => {
-    const tool = TOOL_HANDLERS.list_releases;
+    const tool = TOOL_HANDLERS.find_releases;
     const result = await tool(
       {
         accessToken: "access-token",
@@ -149,6 +233,8 @@ describe("list_releases", () => {
       {
         organizationSlug: "sentry-mcp-evals",
         projectSlug: "cloudflare-mcp",
+        regionUrl: undefined,
+        query: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
@@ -165,15 +251,15 @@ describe("list_releases", () => {
       # Using this information
 
       - You can reference the Release version in commit messages or documentation.
-      - You can search for issues in a specific release using the \`search_errors()\` tool with the query \`release:8ce89484-0fec-4913-a2cd-e8e2d41dee36\`.
+      - You can search for issues in a specific release using the \`find_errors()\` tool with the query \`release:8ce89484-0fec-4913-a2cd-e8e2d41dee36\`.
       "
     `);
   });
 });
 
-describe("list_tags", () => {
+describe("find_tags", () => {
   it("works", async () => {
-    const tool = TOOL_HANDLERS.list_tags;
+    const tool = TOOL_HANDLERS.find_tags;
     const result = await tool(
       {
         accessToken: "access-token",
@@ -183,6 +269,7 @@ describe("list_tags", () => {
       {
         organizationSlug: "sentry-mcp-evals",
         projectSlug: undefined,
+        regionUrl: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
@@ -216,9 +303,9 @@ describe("list_tags", () => {
   });
 });
 
-describe("search_errors", () => {
+describe("find_errors", () => {
   it("serializes", async () => {
-    const tool = TOOL_HANDLERS.search_errors;
+    const tool = TOOL_HANDLERS.find_errors;
     const result = await tool(
       {
         accessToken: "access-token",
@@ -232,6 +319,7 @@ describe("search_errors", () => {
         transaction: undefined,
         query: undefined,
         sortBy: "count",
+        regionUrl: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
@@ -256,9 +344,9 @@ describe("search_errors", () => {
   });
 });
 
-describe("search_transactions", () => {
+describe("find_transactions", () => {
   it("serializes", async () => {
-    const tool = TOOL_HANDLERS.search_transactions;
+    const tool = TOOL_HANDLERS.find_transactions;
     const result = await tool(
       {
         accessToken: "access-token",
@@ -271,13 +359,14 @@ describe("search_transactions", () => {
         transaction: undefined,
         query: undefined,
         sortBy: "duration",
+        regionUrl: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
       "# Transactions in **sentry-mcp-evals**
 
 
-      ## GET /trpc/bottleList
+      ## \`GET /trpc/bottleList\`
 
       **Span ID**: 07752c6aeb027c8f
       **Trace ID**: 6a477f5b0f31ef7b6b9b5e1dea66c91d
@@ -288,7 +377,7 @@ describe("search_transactions", () => {
       **Project**: peated
       **URL**: https://sentry-mcp-evals.sentry.io/explore/traces/trace/6a477f5b0f31ef7b6b9b5e1dea66c91d
 
-      ## GET /trpc/bottleList
+      ## \`GET /trpc/bottleList\`
 
       **Span ID**: 7ab5edf5b3ba42c9
       **Trace ID**: 54177131c7b192a446124daba3136045
@@ -299,71 +388,6 @@ describe("search_transactions", () => {
       **Project**: peated
       **URL**: https://sentry-mcp-evals.sentry.io/explore/traces/trace/54177131c7b192a446124daba3136045
 
-      "
-    `);
-  });
-});
-
-describe("get_issue_summary", () => {
-  it("serializes with issueId", async () => {
-    const tool = TOOL_HANDLERS.get_issue_summary;
-    const result = await tool(
-      {
-        accessToken: "access-token",
-        userId: "1",
-        organizationSlug: null,
-      },
-      {
-        organizationSlug: "sentry-mcp-evals",
-        issueId: "CLOUDFLARE-MCP-41",
-        issueUrl: undefined,
-      },
-    );
-    expect(result).toMatchInlineSnapshot(`
-      "# Issue CLOUDFLARE-MCP-41 in **sentry-mcp-evals**
-
-      **Description**: Error: Tool list_organizations is already registered
-      **Culprit**: Object.fetch(index)
-      **First Seen**: 2025-04-03T22:51:19.403Z
-      **Last Seen**: 2025-04-12T11:34:11.000Z
-      **Occurrences**: 25
-      **Users Impacted**: 1
-      **Status**: unresolved
-      **Platform**: javascript
-      **Project**: CLOUDFLARE-MCP
-      **URL**: https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-41
-      "
-    `);
-  });
-
-  it("serializes with issueUrl", async () => {
-    const tool = TOOL_HANDLERS.get_issue_summary;
-    const result = await tool(
-      {
-        accessToken: "access-token",
-        userId: "1",
-        organizationSlug: null,
-      },
-      {
-        organizationSlug: undefined,
-        issueId: undefined,
-        issueUrl: "https://sentry-mcp-evals.sentry.io/issues/6507376925",
-      },
-    );
-
-    expect(result).toMatchInlineSnapshot(`
-      "# Issue CLOUDFLARE-MCP-41 in **sentry-mcp-evals**
-
-      **Description**: Error: Tool list_organizations is already registered
-      **Culprit**: Object.fetch(index)
-      **First Seen**: 2025-04-03T22:51:19.403Z
-      **Last Seen**: 2025-04-12T11:34:11.000Z
-      **Occurrences**: 25
-      **Users Impacted**: 1
-      **Status**: unresolved
-      **Platform**: javascript
-      **Project**: CLOUDFLARE-MCP
-      **URL**: https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-41
       "
     `);
   });
@@ -381,7 +405,9 @@ describe("get_issue_details", () => {
       {
         organizationSlug: "sentry-mcp-evals",
         issueId: "CLOUDFLARE-MCP-41",
+        eventId: undefined,
         issueUrl: undefined,
+        regionUrl: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
@@ -391,12 +417,20 @@ describe("get_issue_details", () => {
       **Culprit**: Object.fetch(index)
       **First Seen**: 2025-04-03T22:51:19.403Z
       **Last Seen**: 2025-04-12T11:34:11.000Z
+      **Occurrences**: 25
+      **Users Impacted**: 1
+      **Status**: unresolved
+      **Platform**: javascript
+      **Project**: CLOUDFLARE-MCP
       **URL**: https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-41
 
-      ## Event Specifics
+      ## Event Details
 
+      **Event ID**: 7ca573c0f4814912aaa9bdc77d1a7d51
       **Occurred At**: 2025-04-08T21:15:04.000Z
-      **Error:**
+
+      ### Error
+
       \`\`\`
       Error: Tool list_organizations is already registered
       \`\`\`
@@ -407,6 +441,31 @@ describe("get_issue_details", () => {
       index.js:8029:24 (OAuthProviderImpl.fetch)
       index.js:19631:28 (Object.fetch)
       \`\`\`
+
+      ### HTTP Request
+
+      **Method:** GET
+      **URL:** https://mcp.sentry.dev/sse
+
+      ### Additional Context
+
+      These are additional context provided by the user when they're instrumenting their application.
+
+      **cloud_resource**
+      cloud.provider: "cloudflare"
+
+      **culture**
+      timezone: "Europe/London"
+
+      **runtime**
+      name: "cloudflare"
+
+      **trace**
+      trace_id: "3032af8bcdfe4423b937fc5c041d5d82"
+      span_id: "953da703d2a6f4c7"
+      status: "unknown"
+      client_sample_rate: 1
+      sampled: true
 
       # Using this information
 
@@ -427,7 +486,9 @@ describe("get_issue_details", () => {
       {
         organizationSlug: undefined,
         issueId: undefined,
+        eventId: undefined,
         issueUrl: "https://sentry-mcp-evals.sentry.io/issues/6507376925",
+        regionUrl: undefined,
       },
     );
 
@@ -438,12 +499,20 @@ describe("get_issue_details", () => {
       **Culprit**: Object.fetch(index)
       **First Seen**: 2025-04-03T22:51:19.403Z
       **Last Seen**: 2025-04-12T11:34:11.000Z
+      **Occurrences**: 25
+      **Users Impacted**: 1
+      **Status**: unresolved
+      **Platform**: javascript
+      **Project**: CLOUDFLARE-MCP
       **URL**: https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-41
 
-      ## Event Specifics
+      ## Event Details
 
+      **Event ID**: 7ca573c0f4814912aaa9bdc77d1a7d51
       **Occurred At**: 2025-04-08T21:15:04.000Z
-      **Error:**
+
+      ### Error
+
       \`\`\`
       Error: Tool list_organizations is already registered
       \`\`\`
@@ -455,9 +524,114 @@ describe("get_issue_details", () => {
       index.js:19631:28 (Object.fetch)
       \`\`\`
 
+      ### HTTP Request
+
+      **Method:** GET
+      **URL:** https://mcp.sentry.dev/sse
+
+      ### Additional Context
+
+      These are additional context provided by the user when they're instrumenting their application.
+
+      **cloud_resource**
+      cloud.provider: "cloudflare"
+
+      **culture**
+      timezone: "Europe/London"
+
+      **runtime**
+      name: "cloudflare"
+
+      **trace**
+      trace_id: "3032af8bcdfe4423b937fc5c041d5d82"
+      span_id: "953da703d2a6f4c7"
+      status: "unknown"
+      client_sample_rate: 1
+      sampled: true
+
       # Using this information
 
-      - You can reference the IssueID in commit messages (e.g. \`Fixes 6507376925\`) to automatically close the issue when the commit is merged.
+      - You can reference the IssueID in commit messages (e.g. \`Fixes CLOUDFLARE-MCP-41\`) to automatically close the issue when the commit is merged.
+      - The stacktrace includes both first-party application code as well as third-party code, its important to triage to first-party code.
+      "
+    `);
+  });
+  it("serializes with eventId", async () => {
+    const tool = TOOL_HANDLERS.get_issue_details;
+    const result = await tool(
+      {
+        accessToken: "access-token",
+        userId: "1",
+        organizationSlug: null,
+      },
+      {
+        organizationSlug: "sentry-mcp-evals",
+        issueId: undefined,
+        issueUrl: undefined,
+        eventId: "7ca573c0f4814912aaa9bdc77d1a7d51",
+        regionUrl: undefined,
+      },
+    );
+    expect(result).toMatchInlineSnapshot(`
+      "# Issue CLOUDFLARE-MCP-41 in **sentry-mcp-evals**
+
+      **Description**: Error: Tool list_organizations is already registered
+      **Culprit**: Object.fetch(index)
+      **First Seen**: 2025-04-03T22:51:19.403Z
+      **Last Seen**: 2025-04-12T11:34:11.000Z
+      **Occurrences**: 25
+      **Users Impacted**: 1
+      **Status**: unresolved
+      **Platform**: javascript
+      **Project**: CLOUDFLARE-MCP
+      **URL**: https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-41
+
+      ## Event Details
+
+      **Event ID**: 7ca573c0f4814912aaa9bdc77d1a7d51
+      **Occurred At**: 2025-04-08T21:15:04.000Z
+
+      ### Error
+
+      \`\`\`
+      Error: Tool list_organizations is already registered
+      \`\`\`
+
+      **Stacktrace:**
+      \`\`\`
+      index.js:7809:27
+      index.js:8029:24 (OAuthProviderImpl.fetch)
+      index.js:19631:28 (Object.fetch)
+      \`\`\`
+
+      ### HTTP Request
+
+      **Method:** GET
+      **URL:** https://mcp.sentry.dev/sse
+
+      ### Additional Context
+
+      These are additional context provided by the user when they're instrumenting their application.
+
+      **cloud_resource**
+      cloud.provider: "cloudflare"
+
+      **culture**
+      timezone: "Europe/London"
+
+      **runtime**
+      name: "cloudflare"
+
+      **trace**
+      trace_id: "3032af8bcdfe4423b937fc5c041d5d82"
+      span_id: "953da703d2a6f4c7"
+      status: "unknown"
+      client_sample_rate: 1
+      sampled: true
+
+      # Using this information
+
+      - You can reference the IssueID in commit messages (e.g. \`Fixes CLOUDFLARE-MCP-41\`) to automatically close the issue when the commit is merged.
       - The stacktrace includes both first-party application code as well as third-party code, its important to triage to first-party code.
       "
     `);
@@ -476,6 +650,7 @@ describe("create_team", () => {
       {
         organizationSlug: "sentry-mcp-evals",
         name: "the-goats",
+        regionUrl: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
@@ -505,7 +680,8 @@ describe("create_project", () => {
         organizationSlug: "sentry-mcp-evals",
         teamSlug: "the-goats",
         name: "cloudflare-mcp",
-        platform: "javascript",
+        platform: "node",
+        regionUrl: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
@@ -525,6 +701,80 @@ describe("create_project", () => {
   });
 });
 
+describe("update_project", () => {
+  it("updates project settings", async () => {
+    const tool = TOOL_HANDLERS.update_project;
+    const result = await tool(
+      {
+        accessToken: "access-token",
+        userId: "1",
+        organizationSlug: null,
+      },
+      {
+        organizationSlug: "sentry-mcp-evals",
+        projectSlug: "cloudflare-mcp",
+        name: "Updated Project Name",
+        slug: "updated-project-slug",
+        platform: "python",
+        teamSlug: undefined,
+        regionUrl: undefined,
+      },
+    );
+    expect(result).toMatchInlineSnapshot(`
+      "# Updated Project in **sentry-mcp-evals**
+
+      **ID**: 4509109104082945
+      **Slug**: updated-project-slug
+      **Name**: Updated Project Name
+      **Platform**: python
+
+      ## Updates Applied
+      - Updated name to "Updated Project Name"
+      - Updated slug to "updated-project-slug"
+      - Updated platform to "python"
+
+      # Using this information
+
+      - The project is now accessible at slug: \`updated-project-slug\`
+      "
+    `);
+  });
+
+  it("assigns project to team", async () => {
+    const tool = TOOL_HANDLERS.update_project;
+    const result = await tool(
+      {
+        accessToken: "access-token",
+        userId: "1",
+        organizationSlug: null,
+      },
+      {
+        organizationSlug: "sentry-mcp-evals",
+        projectSlug: "cloudflare-mcp",
+        teamSlug: "the-goats",
+        regionUrl: undefined,
+      },
+    );
+    expect(result).toMatchInlineSnapshot(`
+      "# Updated Project in **sentry-mcp-evals**
+
+      **ID**: 4509106749636608
+      **Slug**: cloudflare-mcp
+      **Name**: cloudflare-mcp
+      **Platform**: node
+
+      ## Updates Applied
+      - Updated team assignment to "the-goats"
+
+      # Using this information
+
+      - The project is now accessible at slug: \`cloudflare-mcp\`
+      - The project is now assigned to the \`the-goats\` team
+      "
+    `);
+  });
+});
+
 describe("create_dsn", () => {
   it("serializes", async () => {
     const tool = TOOL_HANDLERS.create_dsn;
@@ -538,6 +788,7 @@ describe("create_dsn", () => {
         organizationSlug: "sentry-mcp-evals",
         projectSlug: "cloudflare-mcp",
         name: "Default",
+        regionUrl: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
@@ -554,9 +805,9 @@ describe("create_dsn", () => {
   });
 });
 
-describe("list_dsn", () => {
+describe("find_dsns", () => {
   it("serializes", async () => {
-    const tool = TOOL_HANDLERS.list_dsns;
+    const tool = TOOL_HANDLERS.find_dsns;
     const result = await tool(
       {
         accessToken: "access-token",
@@ -566,6 +817,7 @@ describe("list_dsn", () => {
       {
         organizationSlug: "sentry-mcp-evals",
         projectSlug: "cloudflare-mcp",
+        regionUrl: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
@@ -583,9 +835,9 @@ describe("list_dsn", () => {
   });
 });
 
-describe("begin_autofix", () => {
+describe("begin_seer_issue_fix", () => {
   it("serializes", async () => {
-    const tool = TOOL_HANDLERS.begin_autofix;
+    const tool = TOOL_HANDLERS.begin_seer_issue_fix;
     const result = await tool(
       {
         accessToken: "access-token",
@@ -596,27 +848,28 @@ describe("begin_autofix", () => {
         organizationSlug: "sentry-mcp-evals",
         issueId: "PEATED-A8",
         issueUrl: undefined,
+        regionUrl: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
-      "# Autofix Started for Issue PEATED-A8
+      "# Issue Fix Started for Issue PEATED-A8
 
       **Run ID:**: 123
 
-      This operation may take some time, so you should call \`get_autofix_status()\` to check the status of the analysis, and repeat the process until its finished.
+      This operation may take some time, so you should call \`get_seer_issue_fix_status()\` to check the status of the analysis, and repeat the process until its finished.
 
       You should also inform the user that the operation may take some time, and give them updates whenever you check the status of the operation..
 
       \`\`\`
-      get_autofix_status(organizationSlug="sentry-mcp-evals", issueId="PEATED-A8")
+      get_seer_issue_fix_status(organizationSlug="sentry-mcp-evals", issueId="PEATED-A8")
       \`\`\`"
     `);
   });
 });
 
-describe("get_autofix_status", () => {
+describe("get_seer_issue_fix_status", () => {
   it("serializes", async () => {
-    const tool = TOOL_HANDLERS.get_autofix_status;
+    const tool = TOOL_HANDLERS.get_seer_issue_fix_status;
     const result = await tool(
       {
         accessToken: "access-token",
@@ -627,10 +880,11 @@ describe("get_autofix_status", () => {
         organizationSlug: "sentry-mcp-evals",
         issueId: "PEATED-A8",
         issueUrl: undefined,
+        regionUrl: undefined,
       },
     );
     expect(result).toMatchInlineSnapshot(`
-      "# Autofix Status for Issue PEATED-A8
+      "# Issue Fix Status for Issue PEATED-A8
 
       ## Analyzing the Issue
 
@@ -905,5 +1159,242 @@ describe("get_autofix_status", () => {
 
       "
     `);
+  });
+});
+
+describe("update_issue", () => {
+  it("updates issue status", async () => {
+    const tool = TOOL_HANDLERS.update_issue;
+    const result = await tool(
+      {
+        accessToken: "access-token",
+        userId: "1",
+        organizationSlug: null,
+      },
+      {
+        organizationSlug: "sentry-mcp-evals",
+        issueId: "CLOUDFLARE-MCP-41",
+        status: "resolved",
+        assignedTo: undefined,
+        issueUrl: undefined,
+        regionUrl: undefined,
+      },
+    );
+    expect(result).toMatchInlineSnapshot(`
+      "# Issue CLOUDFLARE-MCP-41 Updated in **sentry-mcp-evals**
+
+      **Issue**: Error: Tool list_organizations is already registered
+      **URL**: https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-41
+
+      ## Changes Made
+
+      **Status**: unresolved → **resolved**
+
+      ## Current Status
+
+      **Status**: resolved
+      **Assigned To**: Unassigned
+
+      # Using this information
+
+      - The issue has been successfully updated in Sentry
+      - You can view the issue details using: \`get_issue_details(organizationSlug="sentry-mcp-evals", issueId="CLOUDFLARE-MCP-41")\`
+      - The issue is now marked as resolved and will no longer generate alerts
+      "
+    `);
+  });
+
+  it("updates issue assignment", async () => {
+    const tool = TOOL_HANDLERS.update_issue;
+    const result = await tool(
+      {
+        accessToken: "access-token",
+        userId: "1",
+        organizationSlug: null,
+      },
+      {
+        organizationSlug: "sentry-mcp-evals",
+        issueId: "CLOUDFLARE-MCP-41",
+        status: undefined,
+        assignedTo: "john.doe",
+        issueUrl: undefined,
+        regionUrl: undefined,
+      },
+    );
+    expect(result).toMatchInlineSnapshot(`
+      "# Issue CLOUDFLARE-MCP-41 Updated in **sentry-mcp-evals**
+
+      **Issue**: Error: Tool list_organizations is already registered
+      **URL**: https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-41
+
+      ## Changes Made
+
+      **Assigned To**: Unassigned → **john.doe**
+
+      ## Current Status
+
+      **Status**: unresolved
+      **Assigned To**: john.doe
+
+      # Using this information
+
+      - The issue has been successfully updated in Sentry
+      - You can view the issue details using: \`get_issue_details(organizationSlug="sentry-mcp-evals", issueId="CLOUDFLARE-MCP-41")\`
+      "
+    `);
+  });
+
+  it("updates both status and assignment", async () => {
+    const tool = TOOL_HANDLERS.update_issue;
+    const result = await tool(
+      {
+        accessToken: "access-token",
+        userId: "1",
+        organizationSlug: null,
+      },
+      {
+        organizationSlug: "sentry-mcp-evals",
+        issueId: "CLOUDFLARE-MCP-41",
+        status: "ignored",
+        assignedTo: "me",
+        issueUrl: undefined,
+        regionUrl: undefined,
+      },
+    );
+    expect(result).toMatchInlineSnapshot(`
+      "# Issue CLOUDFLARE-MCP-41 Updated in **sentry-mcp-evals**
+
+      **Issue**: Error: Tool list_organizations is already registered
+      **URL**: https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-41
+
+      ## Changes Made
+
+      **Status**: unresolved → **ignored**
+      **Assigned To**: Unassigned → **You**
+
+      ## Current Status
+
+      **Status**: ignored
+      **Assigned To**: me
+
+      # Using this information
+
+      - The issue has been successfully updated in Sentry
+      - You can view the issue details using: \`get_issue_details(organizationSlug="sentry-mcp-evals", issueId="CLOUDFLARE-MCP-41")\`
+      - The issue is now ignored and will not generate alerts until it escalates
+      "
+    `);
+  });
+
+  it("works with issueUrl", async () => {
+    const tool = TOOL_HANDLERS.update_issue;
+    const result = await tool(
+      {
+        accessToken: "access-token",
+        userId: "1",
+        organizationSlug: null,
+      },
+      {
+        organizationSlug: undefined,
+        issueId: undefined,
+        status: "resolved",
+        assignedTo: undefined,
+        issueUrl: "https://sentry-mcp-evals.sentry.io/issues/6507376925",
+        regionUrl: undefined,
+      },
+    );
+
+    expect(result).toMatchInlineSnapshot(`
+      "# Issue CLOUDFLARE-MCP-41 Updated in **sentry-mcp-evals**
+
+      **Issue**: Error: Tool list_organizations is already registered
+      **URL**: https://sentry-mcp-evals.sentry.io/issues/CLOUDFLARE-MCP-41
+
+      ## Changes Made
+
+      **Status**: unresolved → **resolved**
+
+      ## Current Status
+
+      **Status**: resolved
+      **Assigned To**: Unassigned
+
+      # Using this information
+
+      - The issue has been successfully updated in Sentry
+      - You can view the issue details using: \`get_issue_details(organizationSlug="sentry-mcp-evals", issueId="CLOUDFLARE-MCP-41")\`
+      - The issue is now marked as resolved and will no longer generate alerts
+      "
+    `);
+  });
+
+  it("validates required parameters", async () => {
+    const tool = TOOL_HANDLERS.update_issue;
+
+    await expect(
+      tool(
+        {
+          accessToken: "access-token",
+          userId: "1",
+          organizationSlug: null,
+        },
+        {
+          organizationSlug: undefined,
+          issueId: undefined,
+          status: undefined,
+          assignedTo: undefined,
+          issueUrl: undefined,
+          regionUrl: undefined,
+        },
+      ),
+    ).rejects.toThrow("Either `issueId` or `issueUrl` must be provided");
+  });
+
+  it("validates organization slug when using issueId", async () => {
+    const tool = TOOL_HANDLERS.update_issue;
+
+    await expect(
+      tool(
+        {
+          accessToken: "access-token",
+          userId: "1",
+          organizationSlug: null,
+        },
+        {
+          organizationSlug: undefined,
+          issueId: "CLOUDFLARE-MCP-41",
+          status: "resolved",
+          assignedTo: undefined,
+          issueUrl: undefined,
+          regionUrl: undefined,
+        },
+      ),
+    ).rejects.toThrow(
+      "`organizationSlug` is required when providing `issueId`",
+    );
+  });
+
+  it("validates update parameters", async () => {
+    const tool = TOOL_HANDLERS.update_issue;
+
+    await expect(
+      tool(
+        {
+          accessToken: "access-token",
+          userId: "1",
+          organizationSlug: null,
+        },
+        {
+          organizationSlug: "sentry-mcp-evals",
+          issueId: "CLOUDFLARE-MCP-41",
+          status: undefined,
+          assignedTo: undefined,
+          issueUrl: undefined,
+          regionUrl: undefined,
+        },
+      ),
+    ).rejects.toThrow(
+      "At least one of `status` or `assignedTo` must be provided to update the issue",
+    );
   });
 });

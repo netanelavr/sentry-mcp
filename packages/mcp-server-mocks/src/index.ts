@@ -1,30 +1,54 @@
+/**
+ * MSW-based Mock Server for Sentry MCP Development and Testing.
+ *
+ * Provides comprehensive mock responses for all Sentry API endpoints used by the
+ * MCP server. Built with MSW (Mock Service Worker) for realistic HTTP interception
+ * and response handling during development and testing.
+ *
+ * **Usage in Tests:**
+ * ```typescript
+ * import { mswServer } from "@sentry/mcp-server-mocks";
+ *
+ * beforeAll(() => mswServer.listen());
+ * afterEach(() => mswServer.resetHandlers());
+ * afterAll(() => mswServer.close());
+ * ```
+ *
+ * **Usage in Development:**
+ * ```typescript
+ * // Start mock server for local development
+ * mswServer.listen();
+ * // Now all Sentry API calls will be intercepted
+ * ```
+ */
 import { setupServer } from "msw/node";
 import { http, HttpResponse } from "msw";
 
 import autofixStateFixture from "./fixtures/autofix-state.json";
+import issueFixture from "./fixtures/issue.json";
+import eventsFixture from "./fixtures/event.json";
+import tagsFixture from "./fixtures/tags.json";
+import projectFixture from "./fixtures/project.json";
+import teamFixture from "./fixtures/team.json";
 
-const TagsPayload = [
-  { key: "transaction", name: "Transaction", totalValues: 1080 },
-  { key: "runtime.name", name: "Runtime.Name", totalValues: 1080 },
-  { key: "level", name: "Level", totalValues: 1144 },
-  { key: "device", name: "Device", totalValues: 25 },
-  { key: "os", name: "OS", totalValues: 1133 },
-  { key: "user", name: "User", totalValues: 1080 },
-  { key: "runtime", name: "Runtime", totalValues: 1080 },
-  { key: "release", name: "Release", totalValues: 1135 },
-  { key: "url", name: "URL", totalValues: 1080 },
-  { key: "uptime_rule", name: "Uptime Rule", totalValues: 9 },
-  { key: "server_name", name: "Server", totalValues: 1080 },
-  { key: "browser", name: "Browser", totalValues: 56 },
-  { key: "os.name", name: "Os.Name", totalValues: 1135 },
-  { key: "device.family", name: "Device.Family", totalValues: 25 },
-  { key: "replayId", name: "Replayid", totalValues: 55 },
-  { key: "client_os.name", name: "Client Os.Name", totalValues: 1 },
-  { key: "environment", name: "Environment", totalValues: 1144 },
-  { key: "service", name: "Service", totalValues: 1135 },
-  { key: "browser.name", name: "Browser.Name", totalValues: 56 },
-];
+/**
+ * Standard organization payload for mock responses.
+ * Used across multiple endpoints for consistency.
+ */
+const OrganizationPayload = {
+  id: "4509106740723712",
+  slug: "sentry-mcp-evals",
+  name: "sentry-mcp-evals",
+  links: {
+    regionUrl: "https://us.sentry.io",
+    organizationUrl: "https://sentry.io/sentry-mcp-evals",
+  },
+};
 
+/**
+ * Standard release payload for mock responses.
+ * Includes typical metadata and project associations.
+ */
 const ReleasePayload = {
   id: 1402755016,
   version: "8ce89484-0fec-4913-a2cd-e8e2d41dee36",
@@ -107,514 +131,15 @@ const ClientKeyPayload = {
   },
 };
 
-const IssuePayload = {
-  id: "6507376925",
-  shareId: null,
-  shortId: "CLOUDFLARE-MCP-41",
-  title: "Error: Tool list_organizations is already registered",
-  culprit: "Object.fetch(index)",
-  permalink: "https://sentry-mcp-evals.sentry.io/issues/6507376925/",
-  logger: null,
-  level: "error",
-  status: "unresolved",
-  statusDetails: {},
-  substatus: "ongoing",
-  isPublic: false,
-  platform: "javascript",
-  project: {
-    id: "4509062593708032",
-    name: "CLOUDFLARE-MCP",
-    slug: "CLOUDFLARE-MCP",
-    platform: "bun",
-  },
-  type: "error",
-  metadata: {
-    value: "Tool list_organizations is already registered",
-    type: "Error",
-    filename: "index.js",
-    function: "Object.fetch",
-    in_app_frame_mix: "in-app-only",
-    sdk: {
-      name: "sentry.javascript.cloudflare",
-      name_normalized: "sentry.javascript.cloudflare",
-    },
-    severity: 0.0,
-    severity_reason: "ml",
-    initial_priority: 50,
-    title: null,
-  },
-  numComments: 0,
-  assignedTo: null,
-  isBookmarked: false,
-  isSubscribed: false,
-  subscriptionDetails: null,
-  hasSeen: true,
-  annotations: [],
-  issueType: "error",
-  issueCategory: "error",
-  priority: "medium",
-  priorityLockedAt: null,
-  isUnhandled: true,
-  count: "25",
-  userCount: 1,
-  firstSeen: "2025-04-03T22:51:19.403000Z",
-  lastSeen: "2025-04-12T11:34:11Z",
-  firstRelease: null,
-  lastRelease: null,
-  tags: [
-    { key: "environment", name: "Environment", totalValues: 25 },
-    { key: "handled", name: "Handled", totalValues: 25 },
-    { key: "level", name: "Level", totalValues: 25 },
-    { key: "mechanism", name: "Mechanism", totalValues: 25 },
-    { key: "runtime.name", name: "Runtime.Name", totalValues: 25 },
-    { key: "url", name: "URL", totalValues: 25 },
-    { key: "user", name: "User", totalValues: 25 },
-  ],
-  activity: [
-    {
-      id: "4633815464",
-      user: null,
-      type: "auto_set_ongoing",
-      data: { after_days: 7 },
-      dateCreated: "2025-04-10T22:55:22.411699Z",
-    },
-    {
-      id: "0",
-      user: null,
-      type: "first_seen",
-      data: { priority: "medium" },
-      dateCreated: "2025-04-03T22:51:19.403000Z",
-    },
-  ],
-  openPeriods: [
-    {
-      start: "2025-04-03T22:51:19.403000Z",
-      end: null,
-      duration: null,
-      isOpen: true,
-      lastChecked: "2025-04-12T11:34:11.310000Z",
-    },
-  ],
-  seenBy: [
-    {
-      id: "1",
-      name: "David Cramer",
-      username: "david@example.com",
-      email: "david@example.com",
-      avatarUrl: null,
-      isActive: true,
-      hasPasswordAuth: true,
-      isManaged: false,
-      dateJoined: "2012-01-14T22:08:29.270831Z",
-      lastLogin: "2025-04-13T14:00:11.516852Z",
-      has2fa: true,
-      lastActive: "2025-04-13T18:10:49.177605Z",
-      isSuperuser: true,
-      isStaff: true,
-      experiments: {},
-      emails: [{ id: "87429", email: "david@example.com", is_verified: true }],
-      options: {
-        theme: "light",
-        language: "en",
-        stacktraceOrder: 2,
-        defaultIssueEvent: "recommended",
-        timezone: "US/Pacific",
-        clock24Hours: false,
-      },
-      flags: { newsletter_consent_prompt: false },
-      avatar: {
-        avatarType: "upload",
-        avatarUuid: "51e63edabf31412aa2a955e9cf2c1ca0",
-        avatarUrl: "https://sentry.io/avatar/51e63edabf31412aa2a955e9cf2c1ca0/",
-      },
-      identities: [],
-      lastSeen: "2025-04-08T23:15:26.569455Z",
-    },
-  ],
-  pluginActions: [],
-  pluginIssues: [],
-  pluginContexts: [],
-  userReportCount: 0,
-  stats: {
-    "24h": [
-      [1744480800, 0],
-      [1744484400, 0],
-      [1744488000, 0],
-      [1744491600, 0],
-      [1744495200, 0],
-      [1744498800, 0],
-      [1744502400, 0],
-      [1744506000, 0],
-      [1744509600, 0],
-      [1744513200, 0],
-      [1744516800, 0],
-      [1744520400, 0],
-      [1744524000, 0],
-      [1744527600, 0],
-      [1744531200, 0],
-      [1744534800, 0],
-      [1744538400, 0],
-      [1744542000, 0],
-      [1744545600, 0],
-      [1744549200, 0],
-      [1744552800, 0],
-      [1744556400, 0],
-      [1744560000, 0],
-      [1744563600, 0],
-      [1744567200, 0],
-    ],
-    "30d": [
-      [1741910400, 0],
-      [1741996800, 0],
-      [1742083200, 0],
-      [1742169600, 0],
-      [1742256000, 0],
-      [1742342400, 0],
-      [1742428800, 0],
-      [1742515200, 0],
-      [1742601600, 0],
-      [1742688000, 0],
-      [1742774400, 0],
-      [1742860800, 0],
-      [1742947200, 0],
-      [1743033600, 0],
-      [1743120000, 0],
-      [1743206400, 0],
-      [1743292800, 0],
-      [1743379200, 0],
-      [1743465600, 0],
-      [1743552000, 0],
-      [1743638400, 1],
-      [1743724800, 0],
-      [1743811200, 0],
-      [1743897600, 0],
-      [1743984000, 0],
-      [1744070400, 20],
-      [1744156800, 1],
-      [1744243200, 1],
-      [1744329600, 0],
-      [1744416000, 2],
-      [1744502400, 0],
-    ],
-  },
-  participants: [],
-};
-
 // a newer issue, seen less recently
-const IssuePayload2 = {
-  ...IssuePayload,
+const issueFixture2 = {
+  ...issueFixture,
   id: 6507376926,
   shortId: "CLOUDFLARE-MCP-42",
   count: 1,
   title: "Error: Tool list_issues is already registered",
   firstSeen: "2025-04-11T22:51:19.403000Z",
   lastSeen: "2025-04-12T11:34:11Z",
-};
-
-const EventPayload = {
-  id: "7ca573c0f4814912aaa9bdc77d1a7d51",
-  groupID: "6507376925",
-  eventID: "7ca573c0f4814912aaa9bdc77d1a7d51",
-  projectID: "4509062593708032",
-  size: 5891,
-  entries: [
-    {
-      data: {
-        values: [
-          {
-            type: "Error",
-            value: "Tool list_organizations is already registered",
-            mechanism: { type: "cloudflare", handled: false },
-            threadId: null,
-            module: null,
-            stacktrace: {
-              frames: [
-                {
-                  filename: "index.js",
-                  absPath: "/index.js",
-                  module: "index",
-                  package: null,
-                  platform: null,
-                  instructionAddr: null,
-                  symbolAddr: null,
-                  function: null,
-                  rawFunction: null,
-                  symbol: null,
-                  context: [],
-                  lineNo: 7809,
-                  colNo: 27,
-                  inApp: true,
-                  trust: null,
-                  errors: null,
-                  lock: null,
-                  sourceLink: null,
-                  vars: null,
-                },
-                {
-                  filename: "index.js",
-                  absPath: "/index.js",
-                  module: "index",
-                  package: null,
-                  platform: null,
-                  instructionAddr: null,
-                  symbolAddr: null,
-                  function: "OAuthProviderImpl.fetch",
-                  rawFunction: null,
-                  symbol: null,
-                  context: [],
-                  lineNo: 8029,
-                  colNo: 24,
-                  inApp: true,
-                  trust: null,
-                  errors: null,
-                  lock: null,
-                  sourceLink: null,
-                  vars: null,
-                },
-                {
-                  filename: "index.js",
-                  absPath: "/index.js",
-                  module: "index",
-                  package: null,
-                  platform: null,
-                  instructionAddr: null,
-                  symbolAddr: null,
-                  function: "Object.fetch",
-                  rawFunction: null,
-                  symbol: null,
-                  context: [],
-                  lineNo: 19631,
-                  colNo: 28,
-                  inApp: true,
-                  trust: null,
-                  errors: null,
-                  lock: null,
-                  sourceLink: null,
-                  vars: null,
-                },
-              ],
-              framesOmitted: null,
-              registers: null,
-              hasSystemFrames: true,
-            },
-            rawStacktrace: {
-              frames: [
-                {
-                  filename: "index.js",
-                  absPath: "/index.js",
-                  module: "index",
-                  package: null,
-                  platform: null,
-                  instructionAddr: null,
-                  symbolAddr: null,
-                  function: null,
-                  rawFunction: null,
-                  symbol: null,
-                  context: [],
-                  lineNo: 7809,
-                  colNo: 27,
-                  inApp: true,
-                  trust: null,
-                  errors: null,
-                  lock: null,
-                  sourceLink: null,
-                  vars: null,
-                },
-                {
-                  filename: "index.js",
-                  absPath: "/index.js",
-                  module: "index",
-                  package: null,
-                  platform: null,
-                  instructionAddr: null,
-                  symbolAddr: null,
-                  function: "OAuthProviderImpl.fetch",
-                  rawFunction: null,
-                  symbol: null,
-                  context: [],
-                  lineNo: 8029,
-                  colNo: 24,
-                  inApp: true,
-                  trust: null,
-                  errors: null,
-                  lock: null,
-                  sourceLink: null,
-                  vars: null,
-                },
-                {
-                  filename: "index.js",
-                  absPath: "/index.js",
-                  module: "index",
-                  package: null,
-                  platform: null,
-                  instructionAddr: null,
-                  symbolAddr: null,
-                  function: "Object.fetch",
-                  rawFunction: null,
-                  symbol: null,
-                  context: [],
-                  lineNo: 19631,
-                  colNo: 28,
-                  inApp: true,
-                  trust: null,
-                  errors: null,
-                  lock: null,
-                  sourceLink: null,
-                  vars: null,
-                },
-              ],
-              framesOmitted: null,
-              registers: null,
-              hasSystemFrames: true,
-            },
-          },
-        ],
-        hasSystemFrames: true,
-        excOmitted: null,
-      },
-      type: "exception",
-    },
-    {
-      data: {
-        apiTarget: null,
-        method: "GET",
-        url: "https://mcp.sentry.dev/sse",
-        query: [],
-        fragment: null,
-        data: null,
-        headers: [
-          ["Accept", "text/event-stream"],
-          ["Accept-Encoding", "gzip, br"],
-          ["Accept-Language", "*"],
-          ["Authorization", "[Filtered]"],
-          ["Cache-Control", "no-cache"],
-          ["Cf-Ipcountry", "GB"],
-          ["Cf-Ray", "92d4c7266c8f48c9"],
-          ["Cf-Visitor", '{"scheme":"https"}'],
-          ["Connection", "Keep-Alive"],
-          ["Host", "mcp.sentry.dev"],
-          ["Pragma", "no-cache"],
-          ["Sec-Fetch-Mode", "cors"],
-          ["User-Agent", "node"],
-          ["X-Forwarded-Proto", "https"],
-        ],
-        cookies: [],
-        env: null,
-        inferredContentType: null,
-      },
-      type: "request",
-    },
-  ],
-  dist: null,
-  message: "",
-  title: "Error: Tool list_organizations is already registered",
-  location: "index.js",
-  user: {
-    id: null,
-    email: null,
-    username: null,
-    ip_address: "2a06:98c0:3600::103",
-    name: null,
-    geo: { country_code: "US", region: "United States" },
-    data: null,
-  },
-  contexts: {
-    cloud_resource: { "cloud.provider": "cloudflare", type: "default" },
-    culture: { timezone: "Europe/London", type: "default" },
-    runtime: { name: "cloudflare", type: "runtime" },
-    trace: {
-      trace_id: "3032af8bcdfe4423b937fc5c041d5d82",
-      span_id: "953da703d2a6f4c7",
-      status: "unknown",
-      client_sample_rate: 1.0,
-      sampled: true,
-      type: "trace",
-    },
-  },
-  sdk: { name: "sentry.javascript.cloudflare", version: "9.12.0" },
-  context: {},
-  packages: {},
-  type: "error",
-  metadata: {
-    filename: "index.js",
-    function: "Object.fetch",
-    in_app_frame_mix: "in-app-only",
-    type: "Error",
-    value: "Tool list_organizations is already registered",
-  },
-  tags: [
-    { key: "environment", value: "development" },
-    { key: "handled", value: "no" },
-    { key: "level", value: "error" },
-    { key: "mechanism", value: "cloudflare" },
-    { key: "runtime.name", value: "cloudflare" },
-    { key: "url", value: "https://mcp.sentry.dev/sse" },
-  ],
-  platform: "javascript",
-  dateReceived: "2025-04-08T21:15:04.700878Z",
-  errors: [
-    {
-      type: "js_no_source",
-      message: "Source code was not found",
-      data: { symbolicator_type: "missing_source", url: "/index.js" },
-    },
-  ],
-  occurrence: null,
-  _meta: {
-    entries: {
-      "1": {
-        data: {
-          "": null,
-          apiTarget: null,
-          method: null,
-          url: null,
-          query: null,
-          data: null,
-          headers: {
-            "3": {
-              "1": {
-                "": {
-                  rem: [["@password:filter", "s", 0, 10]],
-                  len: 64,
-                  chunks: [
-                    {
-                      type: "redaction",
-                      text: "[Filtered]",
-                      rule_id: "@password:filter",
-                      remark: "s",
-                    },
-                  ],
-                },
-              },
-            },
-          },
-          cookies: null,
-          env: null,
-        },
-      },
-    },
-    message: null,
-    user: null,
-    contexts: null,
-    sdk: null,
-    context: null,
-    packages: null,
-    tags: {},
-  },
-  crashFile: null,
-  culprit: "Object.fetch(index)",
-  dateCreated: "2025-04-08T21:15:04Z",
-  fingerprints: ["60d1c667b173018c004e399b29dc927d"],
-  groupingConfig: {
-    enhancements: "KLUv_SAYwQAAkwKRs25ld3N0eWxlOjIwMjMtMDEtMTGQ",
-    id: "newstyle:2023-01-11",
-  },
-  release: null,
-  userReport: null,
-  sdkUpdates: [],
-  resolvedWith: [null],
-  nextEventID: null,
-  previousEventID: "b7ed18493f4f4817a217b03839d4c017",
 };
 
 const EventsErrorsMeta = {
@@ -788,249 +313,187 @@ const EventsSpansPayload = {
   ],
 };
 
-export const restHandlers = [
-  http.get("https://sentry.io/api/0/organizations/", () => {
-    return HttpResponse.json([
-      {
-        id: "4509106740723712",
-        slug: "sentry-mcp-evals",
-        name: "sentry-mcp-evals",
-      },
-    ]);
-  }),
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/teams/",
-    () => {
+/**
+ * Builds MSW handlers for both SaaS and self-hosted Sentry instances.
+ *
+ * Creates duplicate handlers for us.sentry.io and sentry.io to support
+ * multi-region testing and both SaaS and self-hosted configurations.
+ *
+ * @param handlers - Array of handler definitions with method, path, and fetch function
+ * @returns Array of MSW http handlers for both hosts
+ *
+ * @example Handler Definition
+ * ```typescript
+ * buildHandlers([
+ *   {
+ *     method: "get",
+ *     path: "/api/0/organizations/",
+ *     fetch: () => HttpResponse.json([OrganizationPayload])
+ *   }
+ * ]);
+ * // Creates handlers for both:
+ * // - https://us.sentry.io/api/0/organizations/
+ * // - https://sentry.io/api/0/organizations/
+ * ```
+ */
+function buildHandlers(
+  handlers: {
+    method: keyof typeof http;
+    path: string;
+    fetch: Parameters<(typeof http)[keyof typeof http]>[1];
+  }[],
+) {
+  return [
+    ...handlers.map((handler) =>
+      http[handler.method](
+        `https://us.sentry.io${handler.path}`,
+        handler.fetch,
+      ),
+    ),
+    ...handlers.map((handler) =>
+      http[handler.method](`https://sentry.io${handler.path}`, handler.fetch),
+    ),
+  ];
+}
+
+/**
+ * Complete set of Sentry API mock handlers.
+ *
+ * Covers all endpoints used by the MCP server with realistic responses,
+ * parameter validation, and error scenarios.
+ */
+export const restHandlers = buildHandlers([
+  {
+    method: "get",
+    path: "/api/0/auth/",
+    fetch: () => {
+      return HttpResponse.json({
+        id: "1",
+        name: "John Doe",
+        email: "john.doe@example.com",
+      });
+    },
+  },
+  {
+    method: "get",
+    path: "/api/0/users/me/regions/",
+    fetch: () => {
+      return HttpResponse.json({
+        regions: [{ name: "us", url: "https://us.sentry.io" }],
+      });
+    },
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/",
+    fetch: () => {
+      return HttpResponse.json([OrganizationPayload]);
+    },
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/",
+    fetch: () => {
+      return HttpResponse.json(OrganizationPayload);
+    },
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/teams/",
+    fetch: () => {
+      return HttpResponse.json([teamFixture]);
+    },
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/projects/",
+    fetch: () => {
       return HttpResponse.json([
         {
-          id: "4509106740854784",
-          slug: "the-goats",
-          name: "the-goats",
-          dateCreated: "2025-04-06T14:11:23.961739Z",
-          isMember: true,
-          teamRole: "admin",
-          flags: { "idp:provisioned": false },
-          access: [
-            "team:read",
-            "alerts:read",
-            "event:write",
-            "team:write",
-            "team:admin",
-            "event:read",
-            "org:read",
-            "member:read",
-            "project:admin",
-            "project:write",
-            "org:integrations",
-            "project:releases",
-            "alerts:write",
-            "event:admin",
-            "project:read",
-          ],
-          hasAccess: true,
-          isPending: false,
-          memberCount: 1,
-          avatar: { avatarType: "letter_avatar", avatarUuid: null },
-          externalTeams: [],
-          projects: [],
+          ...projectFixture,
+          id: "4509106749636608", // Different ID for GET endpoint
         },
       ]);
     },
-  ),
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/projects/",
-    () => {
-      return HttpResponse.json([
-        {
-          team: {
-            id: "4509106733776896",
-            slug: "the-goats",
-            name: "the-goats",
-          },
-          teams: [
-            {
-              id: "4509106733776896",
-              slug: "the-goats",
-              name: "the-goats",
-            },
-          ],
-          id: "4509106749636608",
-          name: "cloudflare-mcp",
-          slug: "cloudflare-mcp",
-          isBookmarked: false,
-          isMember: true,
-          access: [
-            "event:admin",
-            "alerts:read",
-            "project:write",
-            "org:integrations",
-            "alerts:write",
-            "member:read",
-            "team:write",
-            "project:read",
-            "event:read",
-            "event:write",
-            "project:admin",
-            "org:read",
-            "team:admin",
-            "project:releases",
-            "team:read",
-          ],
-          hasAccess: true,
-          dateCreated: "2025-04-06T14:13:37.825970Z",
-          environments: [],
-          eventProcessing: { symbolicationDegraded: false },
-          features: [
-            "discard-groups",
-            "alert-filters",
-            "similarity-embeddings",
-            "similarity-indexing",
-            "similarity-view",
-          ],
-          firstEvent: null,
-          firstTransactionEvent: false,
-          hasSessions: false,
-          hasProfiles: false,
-          hasReplays: false,
-          hasFeedbacks: false,
-          hasNewFeedbacks: false,
-          hasMonitors: false,
-          hasMinifiedStackTrace: false,
-          hasInsightsHttp: false,
-          hasInsightsDb: false,
-          hasInsightsAssets: false,
-          hasInsightsAppStart: false,
-          hasInsightsScreenLoad: false,
-          hasInsightsVitals: false,
-          hasInsightsCaches: false,
-          hasInsightsQueues: false,
-          hasInsightsLlmMonitoring: false,
-          platform: "node",
-          platforms: [],
-          latestRelease: null,
-          hasUserReports: false,
-          hasFlags: false,
-          latestDeploys: null,
-        },
-      ]);
-    },
-  ),
-  http.post(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/teams/",
-    () => {
+  },
+  {
+    method: "post",
+    path: "/api/0/organizations/sentry-mcp-evals/teams/",
+    fetch: () => {
       // TODO: validate payload (only accept 'the-goats' for team name)
-      return HttpResponse.json({
-        id: "4509109078196224",
-        slug: "the-goats",
-        name: "the-goats",
-        dateCreated: "2025-04-07T00:05:48.196710Z",
-        isMember: true,
-        teamRole: "admin",
-        flags: { "idp:provisioned": false },
-        access: [
-          "event:read",
-          "org:integrations",
-          "org:read",
-          "member:read",
-          "alerts:write",
-          "event:admin",
-          "team:admin",
-          "project:releases",
-          "team:read",
-          "project:write",
-          "event:write",
-          "team:write",
-          "project:read",
-          "project:admin",
-          "alerts:read",
-        ],
-        hasAccess: true,
-        isPending: false,
-        memberCount: 1,
-        avatar: { avatarType: "letter_avatar", avatarUuid: null },
-      });
+      return HttpResponse.json(
+        {
+          ...teamFixture,
+          id: "4509109078196224",
+          dateCreated: "2025-04-07T00:05:48.196710Z",
+          access: [
+            "event:read",
+            "org:integrations",
+            "org:read",
+            "member:read",
+            "alerts:write",
+            "event:admin",
+            "team:admin",
+            "project:releases",
+            "team:read",
+            "project:write",
+            "event:write",
+            "team:write",
+            "project:read",
+            "project:admin",
+            "alerts:read",
+          ],
+        },
+        { status: 201 },
+      );
     },
-  ),
-  http.post(
-    "https://sentry.io/api/0/teams/sentry-mcp-evals/the-goats/projects/",
-    () => {
+  },
+  {
+    method: "post",
+    path: "/api/0/teams/sentry-mcp-evals/the-goats/projects/",
+    fetch: async ({ request }) => {
       // TODO: validate payload (only accept 'cloudflare-mcp' for project name)
+      const body = (await request.json()) as any;
       return HttpResponse.json({
-        id: "4509109104082945",
-        slug: "cloudflare-mcp",
-        name: "cloudflare-mcp",
-        platform: "javascript",
-        dateCreated: "2025-04-07T00:12:23.143074Z",
-        isBookmarked: false,
-        isMember: true,
-        features: [
-          "discard-groups",
-          "alert-filters",
-          "similarity-embeddings",
-          "similarity-indexing",
-          "similarity-view",
-        ],
-        firstEvent: null,
-        firstTransactionEvent: false,
-        access: [
-          "team:write",
-          "alerts:write",
-          "event:write",
-          "org:read",
-          "alerts:read",
-          "event:admin",
-          "project:admin",
-          "event:read",
-          "org:integrations",
-          "project:read",
-          "project:releases",
-          "project:write",
-          "member:read",
-          "team:read",
-          "team:admin",
-        ],
-        hasAccess: true,
-        hasMinifiedStackTrace: false,
-        hasMonitors: false,
-        hasProfiles: false,
-        hasReplays: false,
-        hasFeedbacks: false,
-        hasFlags: false,
-        hasNewFeedbacks: false,
-        hasSessions: false,
-        hasInsightsHttp: false,
-        hasInsightsDb: false,
-        hasInsightsAssets: false,
-        hasInsightsAppStart: false,
-        hasInsightsScreenLoad: false,
-        hasInsightsVitals: false,
-        hasInsightsCaches: false,
-        hasInsightsQueues: false,
-        hasInsightsLlmMonitoring: false,
-        isInternal: false,
-        isPublic: false,
-        avatar: { avatarType: "letter_avatar", avatarUuid: null },
-        color: "#bf3f55",
-        status: "active",
+        ...projectFixture,
+        name: body?.name || "cloudflare-mcp",
+        slug: body?.slug || "cloudflare-mcp",
+        platform: body?.platform || "node",
       });
     },
-  ),
-  http.post(
-    "https://sentry.io/api/0/projects/sentry-mcp-evals/cloudflare-mcp/keys/",
-    () => {
+  },
+  {
+    method: "put",
+    path: "/api/0/projects/sentry-mcp-evals/cloudflare-mcp/",
+    fetch: async ({ request }) => {
+      const body = (await request.json()) as any;
+      return HttpResponse.json({
+        ...projectFixture,
+        slug: body?.slug || "cloudflare-mcp",
+        name: body?.name || "cloudflare-mcp",
+        platform: body?.platform || "node",
+      });
+    },
+  },
+  {
+    method: "post",
+    path: "/api/0/projects/sentry-mcp-evals/cloudflare-mcp/keys/",
+    fetch: () => {
       // TODO: validate payload (only accept 'Default' for key name)
       return HttpResponse.json(ClientKeyPayload);
     },
-  ),
-  http.get(
-    "https://sentry.io/api/0/projects/sentry-mcp-evals/cloudflare-mcp/keys/",
-    () => {
+  },
+  {
+    method: "get",
+    path: "/api/0/projects/sentry-mcp-evals/cloudflare-mcp/keys/",
+    fetch: () => {
       return HttpResponse.json([ClientKeyPayload]);
     },
-  ),
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/events/",
-    async ({ request }) => {
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/events/",
+    fetch: async ({ request }) => {
       const url = new URL(request.url);
       const dataset = url.searchParams.get("dataset");
       const query = url.searchParams.get("query");
@@ -1101,10 +564,16 @@ export const restHandlers = [
 
       return HttpResponse.json("Invalid dataset", { status: 400 });
     },
-  ),
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/issues/",
-    ({ request }) => {
+  },
+  {
+    method: "get",
+    path: "/api/0/projects/sentry-mcp-evals/foobar/issues/",
+    fetch: () => HttpResponse.json([]),
+  },
+  {
+    method: "get",
+    path: "/api/0/projects/sentry-mcp-evals/cloudflare-mcp/issues/",
+    fetch: ({ request }) => {
       const url = new URL(request.url);
       const sort = url.searchParams.get("sort");
 
@@ -1134,6 +603,59 @@ export const restHandlers = [
           "is:unresolved",
           "error.handled:false is:unresolved",
           "error.unhandled:true is:unresolved",
+          "user.email:david@sentry.io",
+        ].includes(sortedQuery)
+      ) {
+        return HttpResponse.json([]);
+      }
+
+      if (queryTokens.includes("user.email:david@sentry.io")) {
+        return HttpResponse.json([issueFixture]);
+      }
+
+      if (sort === "date") {
+        return HttpResponse.json([issueFixture, issueFixture2]);
+      }
+      return HttpResponse.json([issueFixture2, issueFixture]);
+    },
+  },
+
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/",
+    fetch: ({ request }) => {
+      const url = new URL(request.url);
+      const sort = url.searchParams.get("sort");
+
+      if (![null, "user", "freq", "date", "new", null].includes(sort)) {
+        return HttpResponse.json(
+          `Invalid sort: ${url.searchParams.get("sort")}`,
+          {
+            status: 400,
+          },
+        );
+      }
+
+      const collapse = url.searchParams.getAll("collapse");
+      if (collapse.includes("stats")) {
+        return HttpResponse.json(`Invalid collapse: ${collapse.join(",")}`, {
+          status: 400,
+        });
+      }
+
+      const query = url.searchParams.get("query");
+      const queryTokens = query?.split(" ").sort() ?? [];
+      const sortedQuery = queryTokens ? queryTokens.join(" ") : null;
+      if (query === "7ca573c0f4814912aaa9bdc77d1a7d51") {
+        return HttpResponse.json([issueFixture]);
+      }
+      if (
+        ![
+          null,
+          "",
+          "is:unresolved",
+          "error.handled:false is:unresolved",
+          "error.unhandled:true is:unresolved",
           "project:cloudflare-mcp",
           "is:unresolved project:cloudflare-mcp",
           "user.email:david@sentry.io",
@@ -1150,90 +672,197 @@ export const restHandlers = [
         }
         return HttpResponse.json([]);
       }
-
       if (queryTokens.includes("user.email:david@sentry.io")) {
-        return HttpResponse.json([IssuePayload]);
+        return HttpResponse.json([issueFixture]);
       }
 
       if (sort === "date") {
-        return HttpResponse.json([IssuePayload, IssuePayload2]);
+        return HttpResponse.json([issueFixture, issueFixture2]);
       }
-      return HttpResponse.json([IssuePayload2, IssuePayload]);
+      return HttpResponse.json([issueFixture2, issueFixture]);
     },
-  ),
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/issues/CLOUDFLARE-MCP-41/",
-    () => HttpResponse.json(IssuePayload),
-  ),
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/issues/6507376925/",
-    () => HttpResponse.json(IssuePayload),
-  ),
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/issues/CLOUDFLARE-MCP-42/",
-    () => HttpResponse.json(IssuePayload2),
-  ),
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/issues/6507376926/",
-    () => HttpResponse.json(IssuePayload2),
-  ),
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/issues/CLOUDFLARE-MCP-41/events/latest/",
-    () => HttpResponse.json(EventPayload),
-  ),
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/issues/6507376925/events/latest/",
-    () => HttpResponse.json(EventPayload),
-  ),
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/CLOUDFLARE-MCP-41/",
+    fetch: () => HttpResponse.json(issueFixture),
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/6507376925/",
+    fetch: () => HttpResponse.json(issueFixture),
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/CLOUDFLARE-MCP-42/",
+    fetch: () => HttpResponse.json(issueFixture2),
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/6507376926/",
+    fetch: () => HttpResponse.json(issueFixture2),
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/CLOUDFLARE-MCP-41/events/7ca573c0f4814912aaa9bdc77d1a7d51/",
+    fetch: () => HttpResponse.json(eventsFixture),
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/CLOUDFLARE-MCP-41/events/latest/",
+    fetch: () => HttpResponse.json(eventsFixture),
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/6507376925/events/7ca573c0f4814912aaa9bdc77d1a7d51/",
+    fetch: () => HttpResponse.json(eventsFixture),
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/6507376925/events/latest/",
+    fetch: () => HttpResponse.json(eventsFixture),
+  },
   // TODO: event payload should be tweaked to match issue
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/issues/CLOUDFLARE-MCP-42/events/latest/",
-    () => HttpResponse.json(EventPayload),
-  ),
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/CLOUDFLARE-MCP-42/events/latest/",
+    fetch: () => HttpResponse.json(eventsFixture),
+  },
   // TODO: event payload should be tweaked to match issue
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/issues/6507376926/events/latest/",
-    () => HttpResponse.json(EventPayload),
-  ),
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/releases/",
-    () => HttpResponse.json([ReleasePayload]),
-  ),
-  http.get(
-    "https://sentry.io/api/0/projects/sentry-mcp-evals/cloudflare-mcp/releases/",
-    () => HttpResponse.json([ReleasePayload]),
-  ),
-  http.get("https://sentry.io/api/0/organizations/sentry-mcp-evals/tags/", () =>
-    HttpResponse.json(TagsPayload),
-  ),
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/issues/6507376925/autofix/",
-    () => {
-      return HttpResponse.json(autofixStateFixture);
-    },
-  ),
-  http.get(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/issues/PEATED-A8/autofix/",
-    () => {
-      return HttpResponse.json(autofixStateFixture);
-    },
-  ),
-  http.post(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/issues/6507376925/autofix/",
-    () => {
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/6507376926/events/latest/",
+    fetch: () => HttpResponse.json(eventsFixture),
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/releases/",
+    fetch: () => HttpResponse.json([ReleasePayload]),
+  },
+  {
+    method: "get",
+    path: "/api/0/projects/sentry-mcp-evals/cloudflare-mcp/releases/",
+    fetch: () => HttpResponse.json([ReleasePayload]),
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/tags/",
+    fetch: () => HttpResponse.json(tagsFixture),
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/6507376925/autofix/",
+    fetch: () => HttpResponse.json(autofixStateFixture),
+  },
+  {
+    method: "get",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/PEATED-A8/autofix/",
+    fetch: () => HttpResponse.json(autofixStateFixture),
+  },
+  {
+    method: "post",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/6507376925/autofix/",
+    fetch: () => HttpResponse.json({ run_id: 123 }),
+  },
+  {
+    method: "post",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/PEATED-A8/autofix/",
+    fetch: () => HttpResponse.json({ run_id: 123 }),
+  },
+  {
+    method: "post",
+    path: "/api/0/projects/sentry-mcp-evals/cloudflare-mcp/teams/the-goats/",
+    fetch: async ({ request }) => {
+      const body = (await request.json()) as any;
       return HttpResponse.json({
-        run_id: 123,
+        ...teamFixture,
+        id: "4509109078196224",
+        slug: body?.slug || "the-goats",
+        name: body?.name || "the-goats",
+        dateCreated: "2025-04-07T00:05:48.196710Z",
       });
     },
-  ),
-  http.post(
-    "https://sentry.io/api/0/organizations/sentry-mcp-evals/issues/PEATED-A8/autofix/",
-    () => {
-      return HttpResponse.json({
-        run_id: 123,
-      });
+  },
+  {
+    method: "put",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/CLOUDFLARE-MCP-41/",
+    fetch: async ({ request }) => {
+      const body = (await request.json()) as any;
+      const updatedIssue = {
+        ...issueFixture,
+        status: body?.status || issueFixture.status,
+        assignedTo: body?.assignedTo || issueFixture.assignedTo,
+      };
+      return HttpResponse.json(updatedIssue);
     },
-  ),
-];
+  },
+  {
+    method: "put",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/6507376925/",
+    fetch: async ({ request }) => {
+      const body = (await request.json()) as any;
+      const updatedIssue = {
+        ...issueFixture,
+        status: body?.status || issueFixture.status,
+        assignedTo: body?.assignedTo || issueFixture.assignedTo,
+      };
+      return HttpResponse.json(updatedIssue);
+    },
+  },
+  {
+    method: "put",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/CLOUDFLARE-MCP-42/",
+    fetch: async ({ request }) => {
+      const body = (await request.json()) as any;
+      const updatedIssue = {
+        ...issueFixture2,
+        status: body?.status || issueFixture2.status,
+        assignedTo: body?.assignedTo || issueFixture2.assignedTo,
+      };
+      return HttpResponse.json(updatedIssue);
+    },
+  },
+  {
+    method: "put",
+    path: "/api/0/organizations/sentry-mcp-evals/issues/6507376926/",
+    fetch: async ({ request }) => {
+      const body = (await request.json()) as any;
+      const updatedIssue = {
+        ...issueFixture2,
+        status: body?.status || issueFixture2.status,
+        assignedTo: body?.assignedTo || issueFixture2.assignedTo,
+      };
+      return HttpResponse.json(updatedIssue);
+    },
+  },
+]);
 
+/**
+ * Configured MSW server instance with all Sentry API mock handlers.
+ *
+ * Ready-to-use mock server for testing and development. Includes all endpoints
+ * with realistic data, parameter validation, and error scenarios.
+ *
+ * @example Test Setup
+ * ```typescript
+ * import { mswServer } from "@sentry/mcp-server-mocks";
+ *
+ * beforeAll(() => mswServer.listen({ onUnhandledRequest: 'error' }));
+ * afterEach(() => mswServer.resetHandlers());
+ * afterAll(() => mswServer.close());
+ * ```
+ *
+ * @example Development Usage
+ * ```typescript
+ * import { mswServer } from "@sentry/mcp-server-mocks";
+ *
+ * // Start intercepting requests
+ * mswServer.listen();
+ *
+ * // Your MCP server will now use mock responses
+ * const apiService = new SentryApiService({ host: "sentry.io" });
+ * const orgs = await apiService.listOrganizations();
+ * console.log(orgs); // Returns mock organization data
+ * ```
+ */
 export const mswServer = setupServer(...restHandlers);

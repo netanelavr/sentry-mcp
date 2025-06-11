@@ -1,15 +1,77 @@
+/**
+ * Zod schemas for Sentry API response validation.
+ *
+ * This module contains comprehensive Zod schemas that validate and type-check
+ * responses from Sentry's REST API. All schemas are designed to handle Sentry's
+ * flexible data model where most fields can be null or optional.
+ *
+ * Key Design Principles:
+ * - Use .passthrough() for objects that may contain additional fields
+ * - Support both string and number IDs (Sentry's legacy/modern ID formats)
+ * - Handle nullable fields gracefully throughout the schema hierarchy
+ * - Use union types for polymorphic data (events, assignedTo, etc.)
+ *
+ * Schema Categories:
+ * - **Core Resources**: Users, Organizations, Teams, Projects
+ * - **Issue Management**: Issues, Events, Assignments
+ * - **Release Management**: Releases, Commits, Deployments
+ * - **Search & Discovery**: Tags, Error Search, Span Search
+ * - **Integrations**: Client Keys (DSNs), Autofix
+ *
+ * @example Schema Usage
+ * ```typescript
+ * import { IssueListSchema } from "./schema";
+ *
+ * const response = await fetch("/api/0/organizations/my-org/issues/");
+ * const issues = IssueListSchema.parse(await response.json());
+ * // TypeScript now knows the exact shape of issues
+ * ```
+ *
+ * @example Error Handling
+ * ```typescript
+ * const { data, success, error } = ApiErrorSchema.safeParse(response);
+ * if (success) {
+ *   throw new ApiError(data.detail, statusCode);
+ * }
+ * ```
+ */
 import { z } from "zod";
 
+/**
+ * Schema for Sentry API error responses.
+ *
+ * Uses .passthrough() to allow additional fields that may be present
+ * in different error scenarios.
+ */
 export const ApiErrorSchema = z
   .object({
     detail: z.string(),
   })
   .passthrough();
 
+export const UserSchema = z.object({
+  id: z.union([z.string(), z.number()]),
+  name: z.string(),
+  email: z.string(),
+});
+
+export const UserRegionsSchema = z.object({
+  regions: z.array(
+    z.object({
+      name: z.string(),
+      url: z.string().url(),
+    }),
+  ),
+});
+
 export const OrganizationSchema = z.object({
   id: z.union([z.string(), z.number()]),
   slug: z.string(),
   name: z.string(),
+  links: z.object({
+    regionUrl: z.string().url(),
+    organizationUrl: z.string().url(),
+  }),
 });
 
 export const OrganizationListSchema = z.array(OrganizationSchema);
@@ -26,6 +88,7 @@ export const ProjectSchema = z.object({
   id: z.union([z.string(), z.number()]),
   slug: z.string(),
   name: z.string(),
+  platform: z.string().nullable(),
 });
 
 export const ProjectListSchema = z.array(ProjectSchema);
@@ -83,6 +146,20 @@ export const TagSchema = z.object({
 
 export const TagListSchema = z.array(TagSchema);
 
+// Schema for assignedTo field - can be a user object, team object, string, or null
+export const AssignedToSchema = z.union([
+  z.null(),
+  z.string(), // username or actor ID
+  z
+    .object({
+      type: z.enum(["user", "team"]),
+      id: z.union([z.string(), z.number()]),
+      name: z.string(),
+      email: z.string().optional(), // only for users
+    })
+    .passthrough(), // Allow additional fields we might not know about
+]);
+
 export const IssueSchema = z.object({
   id: z.union([z.string(), z.number()]),
   shortId: z.string(),
@@ -93,10 +170,11 @@ export const IssueSchema = z.object({
   userCount: z.union([z.string(), z.number()]),
   permalink: z.string().url(),
   project: ProjectSchema,
-  platform: z.string(),
+  platform: z.string().nullable(),
   status: z.string(),
   culprit: z.string(),
   type: z.union([z.literal("error"), z.literal("transaction"), z.unknown()]),
+  assignedTo: AssignedToSchema.optional(),
 });
 
 export const IssueListSchema = z.array(IssueSchema);
@@ -138,12 +216,21 @@ export const ErrorEntrySchema = z.object({
   value: ExceptionInterface.nullable().optional(),
 });
 
+export const RequestEntrySchema = z.object({
+  method: z.string().nullable(),
+  url: z.string().url().nullable(),
+  // TODO:
+  // query: z.array(z.tuple([z.string(), z.string()])).nullable(),
+  // data: z.unknown().nullable(),
+  // headers: z.array(z.tuple([z.string(), z.string()])).nullable(),
+});
+
 const BaseEventSchema = z.object({
   id: z.string(),
   title: z.string(),
   message: z.string().nullable(),
   platform: z.string().nullable(),
-  type: z.union([z.literal("error"), z.literal("transaction"), z.unknown()]),
+  type: z.unknown(),
   entries: z.array(
     z.union([
       // TODO: there are other types
@@ -169,6 +256,22 @@ const BaseEventSchema = z.object({
       }),
     ]),
   ),
+  contexts: z
+    .record(
+      z.string(),
+      z
+        .object({
+          type: z.union([
+            z.literal("default"),
+            z.literal("runtime"),
+            z.literal("os"),
+            z.literal("trace"),
+            z.unknown(),
+          ]),
+        })
+        .passthrough(),
+    )
+    .optional(),
 });
 
 export const ErrorEventSchema = BaseEventSchema.omit({
@@ -255,6 +358,9 @@ const AutofixStatusSchema = z.enum([
   "NEED_MORE_INFORMATION",
   "COMPLETED",
   "FAILED",
+  "ERROR",
+  "CANCELLED",
+  "WAITING_FOR_USER_RESPONSE",
 ]);
 
 const AutofixRunStepBaseSchema = z.object({

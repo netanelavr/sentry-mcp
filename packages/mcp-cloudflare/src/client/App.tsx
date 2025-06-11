@@ -118,7 +118,7 @@ export default function App() {
                   "Diagnose issue ISSUE_URL and propose solutions.",
                   "What are my latest issues in ORG/PROJECT?",
                   "Create a new project in Sentry for PROJECT and setup local instrumentation using it.",
-                  "Use Sentry's autofix feature, and help me analyze and propose a solution for ISSUE_URL.",
+                  "Use Sentry's Seer and help me analyze and propose a solution for ISSUE_URL.",
                 ].map((prompt) => (
                   <li
                     key={prompt}
@@ -147,7 +147,9 @@ export default function App() {
                 prompt.
               </Note>
               <Accordion type="single" collapsible className="w-full space-y-4">
-                {TOOL_DEFINITIONS.map((tool) => (
+                {TOOL_DEFINITIONS.sort((a, b) =>
+                  a.name.localeCompare(b.name),
+                ).map((tool) => (
                   <AccordionItem
                     value={tool.name}
                     key={tool.name}
@@ -194,7 +196,9 @@ export default function App() {
                 </p>
               </Prose>
               <Accordion type="single" collapsible className="w-full space-y-4">
-                {PROMPT_DEFINITIONS.map((prompt) => (
+                {PROMPT_DEFINITIONS.sort((a, b) =>
+                  a.name.localeCompare(b.name),
+                ).map((prompt) => (
                   <AccordionItem
                     value={prompt.name}
                     key={prompt.name}
@@ -227,24 +231,26 @@ export default function App() {
                 </p>
               </Prose>
               <Accordion type="single" collapsible className="w-full space-y-4">
-                {RESOURCES.map((resource) => (
-                  <AccordionItem
-                    value={resource.name}
-                    key={resource.name}
-                    className="border last:border-b px-4 border-gray-800"
-                  >
-                    <AccordionTrigger className="text-base text-white hover:text-violet-300 cursor-pointer font-mono font-semibold">
-                      {resource.name}
-                    </AccordionTrigger>
-                    <AccordionContent className="text-gray-300 prose prose-invert max-w-none">
-                      <Prose>
-                        <p className="mb-0">
-                          {resource.description.split("\n")[0]}
-                        </p>
-                      </Prose>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
+                {RESOURCES.sort((a, b) => a.name.localeCompare(b.name)).map(
+                  (resource) => (
+                    <AccordionItem
+                      value={resource.name}
+                      key={resource.name}
+                      className="border last:border-b px-4 border-gray-800"
+                    >
+                      <AccordionTrigger className="text-base text-white hover:text-violet-300 cursor-pointer font-mono font-semibold">
+                        {resource.name}
+                      </AccordionTrigger>
+                      <AccordionContent className="text-gray-300 prose prose-invert max-w-none">
+                        <Prose>
+                          <p className="mb-0">
+                            {resource.description.split("\n")[0]}
+                          </p>
+                        </Prose>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ),
+                )}
               </Accordion>
             </Section>
 
